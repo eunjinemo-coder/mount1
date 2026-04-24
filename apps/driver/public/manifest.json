@@ -1,0 +1,19 @@
+{
+  "name": "마운트파트너스",
+  "short_name": "마운트파트너스",
+  "description": "벽걸이프로 협력기사 배차·시공 운영 PWA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "lang": "ko",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icons/192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
