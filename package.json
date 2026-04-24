@@ -1,0 +1,39 @@
+{
+  "name": "mountpartners",
+  "private": true,
+  "version": "0.1.0",
+  "description": "마운트파트너스 기사앱 + 관리자 웹 (walltvpro 무타공 TV 시공 운영 SaaS)",
+  "packageManager": "pnpm@10.23.0",
+  "engines": {
+    "node": ">=20.18.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:driver": "turbo run dev --filter=@mount/driver",
+    "dev:admin": "turbo run dev --filter=@mount/admin",
+    "build": "turbo run build",
+    "build:driver": "turbo run build --filter=@mount/driver",
+    "build:admin": "turbo run build --filter=@mount/admin",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,css,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,css,yml,yaml}\"",
+    "db:types": "pnpm --filter @mount/db db:types",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.10.5",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1"
+  }
+}
