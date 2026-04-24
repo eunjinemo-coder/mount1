@@ -22,4 +22,6 @@
 - 2026-04-24 · 범위 · Tailwind CSS 통합 차기 세션 연기 · 스캐폴딩 단계 복잡도 제어. `TD-002` 로 기록.
 - 2026-04-24 · 범위 · Supabase migration 본문 차기 세션 연기 · 이번 세션은 `supabase/` 폴더 skeleton + README 만. `TD-003` 으로 기록.
 - 2026-04-24 · 범위 · eslint-config-next 통합 차기 세션 연기 · flat config 호환성 이슈 회피. `TD-006` 으로 기록.
+- 2026-04-24 · 보안 · Supabase 신 API 키 형식 채택 (`sb_publishable_*` / `sb_secret_*`) · 기존 JWT 형식 (`eyJhbGci...`) 대체. Secret 키 공개 채팅 노출 사고 후 dev/prod 둘 다 `Rotate` 로 재발급 + Vercel Env Variables 직접 입력 경로로 service_role 전달 우회. `.env.example` 포맷 샘플도 새 형식으로 갱신.
+- 2026-04-24 · 인프라 · Supabase 프로젝트 2개 확정 · dev `nzphbeookxotdjzishqn` · prod `rydmceypkospgzhvfpyx` · 둘 다 ap-northeast-2 Seoul · 초기 플랜 Free (D-Day 전 prod 만 Pro 전환 예정).
 - 2026-04-24 · 인프라 · GitHub 원격 레포 `eunjinemo-coder/mount1` (private) · 은진님 지시. 로컬 폴더 `D:\MOUNT1\` 과 이름 통일. 후보 변천: (1) `Parkkwangjun/mountpartners_app` → collaborator 권한 복잡도로 회피, (2) `eunjinemo-coder/mountpartners_app` → 기존 Codex 세션 잔여 내용 발견되어 간섭 회피를 위해 최종적으로 (3) `eunjinemo-coder/mount1` 로 신규 이름 선택. git user `homecance@naver.com` 유지.
