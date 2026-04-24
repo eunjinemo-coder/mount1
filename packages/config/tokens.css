@@ -1,0 +1,39 @@
+/*
+ * Design Tokens · 마운트파트너스
+ * source_of_truth: 04_DESIGN_SYSTEM/08_TOKEN_EXPORT.md
+ * 본 파일은 해당 문서 export 와 동기화 필요 (수동 sync 예정).
+ */
+
+:root {
+  /* 색상 (placeholder — 08_TOKEN_EXPORT.md 기준 교체 예정) */
+  --mp-color-bg: #ffffff;
+  --mp-color-surface: #f8fafc;
+  --mp-color-text-primary: #0f172a;
+  --mp-color-text-secondary: #475569;
+  --mp-color-accent: #2563eb;
+  --mp-color-danger: #dc2626;
+  --mp-color-success: #16a34a;
+
+  /* 간격 */
+  --mp-space-1: 0.25rem;
+  --mp-space-2: 0.5rem;
+  --mp-space-3: 0.75rem;
+  --mp-space-4: 1rem;
+  --mp-space-6: 1.5rem;
+  --mp-space-8: 2rem;
+
+  /* Radius */
+  --mp-radius-sm: 0.25rem;
+  --mp-radius-md: 0.5rem;
+  --mp-radius-lg: 0.75rem;
+
+  /* Typography */
+  --mp-font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
+    'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --mp-font-size-xs: 0.75rem;
+  --mp-font-size-sm: 0.875rem;
+  --mp-font-size-base: 1rem;
+  --mp-font-size-lg: 1.125rem;
+  --mp-font-size-xl: 1.25rem;
+}
