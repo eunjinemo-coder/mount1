@@ -12,6 +12,16 @@
    - prod 는 D-1 (2026-05-02) Pro 전환 후 `migrations_pending/0003_cron.sql` → `migrations/` 이동 + `supabase db push`
 2. ~~**Tailwind v3 + shadcn/ui New York preset 통합**~~ — **완료 (2026-04-25)** · Tailwind v3.4.19 + shadcn New York · 토큰 이중 시스템(shadcn HSL + 08 hex 병존) · Brand Blue 매핑 · Button cva 6×4 variants · PostCSS chain (postcss-import → tailwindcss → autoprefixer) · safe-area helper · Pretendard 폰트 · dark mode skeleton. typecheck 5/5 · lint 5/5 · build 2/2 통과. `TD-002` · `TD-004` 동시 상환.
 3. ~~**Sentry + PostHog 초기 연결**~~ — **완료 (2026-04-25)** · `@sentry/nextjs` 9.47.1 + `posthog-js` 1.205+. wrapper 패턴 (`@mount/lib/error-reporting`, `@mount/lib/analytics`). PII scrubber (한국 휴대폰·이메일 정규식). instrumentation-client.ts + instrumentation.ts (Next.js 16 신규 패턴). DSN/KEY noop 가드 — 가입 전에도 빌드 통과. `logger.ts` 가 자동으로 Sentry breadcrumb/exception 전송 → `TD-001` 상환. typecheck 5/5 · lint 5/5 · build 2/2 통과.
+4. ~~**품앗이 R1 Foundation 5종 외주**~~ — **완료 (2026-04-25)** · Codex 5 병렬: `@mount/db` Supabase 클라이언트 3종 · `@mount/lib/auth` 인증 helpers 5파일 · `@mount/ui` shadcn 컴포넌트 7종 · `@mount/types` Zod 스키마 5종(신규 패키지) · driver PWA Service Worker (`@serwist/next`). typecheck 6/6 · lint 6/6 · build 2/2 통과 (driver `/offline` 라우트 정상). `TD-007` 동시 상환.
+
+## 다음 라운드 후보 (Round 2 — 화면 구현)
+
+5. **Driver login (A01)** — `apps/driver/app/(driver)/login/page.tsx` + Server Action (`signInWithUsername`) + 폼 검증 + 에러 toast
+6. **Admin login (B01)** — `apps/admin/app/(auth)/login/page.tsx` + IP whitelist 체크 + 5회 실패 잠금 UX
+7. **Driver Today (A02 리스트 탭)** — `v_technician_today` 뷰 조회 + 카드 리스트 + 30분 전 통화 배지
+8. **Admin Today (B02)** — KPI 카드 4종 + 최근 30일 바 차트(skeleton) + 미배차 카운트
+
+R2 진행 전 은진님 Sentry/PostHog 가입 + .env.local 입력 확인 필요.
 
 ## 은진님 세션 외 작업
 

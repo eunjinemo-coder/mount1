@@ -62,3 +62,19 @@
 - 2026-04-25 · 관측성 · **withSentryConfig 옵션** · `silent: !CI` (로컬 빌드 조용) · `disableLogger: true` (Sentry SDK 자체 logger 무음) · `widenClientFileUpload: true` (chunk 더 많이 source map 매핑) · `sourcemaps.disable: !SENTRY_AUTH_TOKEN` (token 없으면 source map 업로드 skip). `hideSourceMaps` 는 Sentry 9 deprecated 라 제거 후 `sourcemaps.disable` 으로 대체.
 - 2026-04-25 · UI · **PostHogProvider** 클라이언트 컴포넌트 도입 · `app/PostHogProvider.tsx` 가 `useEffect` 에서 1회 init. layout.tsx 가 children 을 감쌈. SPA 라우트 변경 시 page() 자동 호출은 Phase 2 (Next.js usePathname listener).
 - 2026-04-25 · 검증 · typecheck 5/5 · lint 5/5 · build 2/2 (driver 51s · admin 59s) 모두 통과. peer warning 1건(@sentry/nextjs ↔ next 16) 외 이슈 없음.
+
+## 2026-04-25 · Phase 0 Day 0.5 품앗이(Pumasi) Round 1 — Codex 5 병렬 외주
+
+- 2026-04-25 · 도구 · **품앗이 모드 도입** · Claude=PM/감독, Codex×5=병렬 구현자. plugin: `gptaku-plugins/pumasi@1.6.0`. config: `D:/MOUNT1/pumasi.config.yaml` (5 task instruction + 게이트). Claude 토큰 절약 + 동시성 향상이 목표.
+- 2026-04-25 · 도구 fix · pumasi worker.js 의 `spawn(program)` 가 Windows 에서 `codex` (sh) 직접 호출 시 ENOENT, `codex.cmd` 호출 시 EINVAL 발생 → command 를 `node C:/Windows/nvm/v22.15.1/node_modules/@openai/codex/bin/codex.js exec ...` 로 우회. ESM entry 직접 실행으로 spawn 안정.
+- 2026-04-25 · R1 결과 · **5 task 모두 산출물 생성 완료** (status.json 만 stale, 실제 파일은 정상). codex 가 stderr 로 verbose 로그 출력하나 작업 자체는 완료. detached 프로세스는 수동 kill.
+  - **db-clients**: `packages/db/src/{client.ts,server.ts,admin.ts,index.ts}` — Supabase 신 API 클라이언트 3종 (`@supabase/ssr@^0.5.2` + `@supabase/supabase-js@^2.45.0`). server 는 cookies adapter (getAll/setAll try-catch), admin 은 `'server-only'` import.
+  - **auth-helpers**: `packages/lib/src/auth/{sign-in,sign-out,session,require-role,index}.ts` — 발급형 ID/PW 인증 (fake email `{role}_{username}@internal.mountpartners.cloud`), AppSession 타입, RedirectError·ForbiddenError 클래스.
+  - **ui-components**: `packages/ui/src/{input,card,badge,skeleton,separator,dialog,sheet}.tsx` — shadcn New York 표준 7종 (cva variants · Radix dialog/separator · 'use client' directive).
+  - **types-zod**: `packages/types/` 신규 패키지 + `src/{order,technician,customer,photo,installation,index}.ts` — ERD §3 기반 Zod 스키마 5종 (zod@^3.24.1).
+  - **pwa-serwist**: `@serwist/next@^9.0.0` + `serwist@^9.0.0` 도입, `apps/driver/app/sw.ts`+`offline/page.tsx`, next.config 체이닝(`withSerwist(withSentryConfig)`), manifest.json 보강.
+- 2026-04-25 · R1 fix (Claude 직접) · 게이트 통과 후 typecheck 2건 실패 → 1줄씩 수정.
+  - `db/src/server.ts`: `setAll(cookies)` 파라미터 implicit any → 명시 타입 (`{ name; value; options?: Parameters<typeof cookieStore.set>[2] }[]`)
+  - `lib/src/auth/session.ts`: 자체 정의 AppMetadata 인터페이스가 Supabase UserAppMetadata 와 호환 불가 → `Record<string, unknown>` 캐스트로 변경
+- 2026-04-25 · R1 검증 · typecheck **6/6** (+1 신규 @mount/types) · lint **6/6** · build **2/2** (driver 36.8s + 30.7s tsc · admin 29.0s + 27.0s tsc) 모두 통과. driver 에 `/offline` 라우트 prerender 확인.
+- 2026-04-25 · TD 상환 · TD-007 (PWA Service Worker) 동시 상환.

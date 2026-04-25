@@ -18,3 +18,17 @@ export {
 export type { Breadcrumb, BreadcrumbLevel } from './error-reporting';
 export { analytics, initAnalytics } from './analytics';
 export type { AnalyticsClient } from './analytics';
+export {
+  signInWithUsername,
+  signOut,
+  getSession,
+  requireRole,
+  RedirectError,
+  ForbiddenError,
+} from './auth';
+export type {
+  AdminRole,
+  UserType,
+  SignInResult,
+  AppSession,
+} from './auth';

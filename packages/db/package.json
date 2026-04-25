@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
+    "./admin": "./src/admin.ts",
     "./server": "./src/server.ts",
     "./types": "./src/types.generated.ts"
   },
@@ -17,8 +18,9 @@
     "db:types": "echo 'TODO: supabase gen types typescript --project-id <PROJ_ID> > src/types.generated.ts'"
   },
   "dependencies": {
+    "next": "^16.2.4",
     "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.47.10"
+    "@supabase/supabase-js": "^2.45.0"
   },
   "devDependencies": {
     "eslint": "^9.18.0",

@@ -1,5 +1,13 @@
+import withSerwistInit from '@serwist/next';
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
+
+const withSerwist = withSerwistInit({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  cacheOnNavigation: true,
+  reloadOnOnline: true,
+});
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -27,7 +35,7 @@ const nextConfig: NextConfig = {
 
 // Sentry source map 업로드는 SENTRY_AUTH_TOKEN 있을 때만 작동.
 // authToken 없으면 build 는 통과 + 업로드만 skip.
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withSerwist(nextConfig), {
   silent: !process.env.CI,
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT_DRIVER,

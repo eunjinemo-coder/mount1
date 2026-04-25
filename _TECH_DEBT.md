@@ -36,10 +36,10 @@
 - 원인: `eslint-config-next` flat config 호환성 이슈 회피
 - 상환: CI/CD 단계 (Step 5) 에서 `@eslint/compat` 또는 `eslint-config-next@16` 확인 후 통합. `next/core-web-vitals` + `next/typescript` 규칙 로드.
 
-### TD-007 · PWA Service Worker 미통합
+### ~~TD-007~~ · PWA Service Worker 미통합 — **상환 완료 (2026-04-25)**
 - 위치: `apps/driver/`
 - 원인: `next-pwa` vs `@serwist/next` 선택 미정
-- 상환: Day -7 ~ -5 구간. manifest.json 은 이미 작성 완료이므로 서비스 워커만 추가.
+- 상환: `@serwist/next@^9.0.0` + `serwist@^9.0.0` 도입 · `apps/driver/app/sw.ts` (Serwist 클래스 + defaultCache + offline fallback) · `apps/driver/app/offline/page.tsx` · `next.config.ts` 에 `withSerwist(withSentryConfig(...))` 체이닝 · `manifest.json` 보강 (start_url · scope · theme_color #2563eb 등). 빌드 시 `/offline` 라우트 정상 prerender.
 
 ### TD-009 · middleware.ts → proxy.ts 규약 변경 (Next.js 16)
 - 위치: `apps/{driver,admin}/middleware.ts`
