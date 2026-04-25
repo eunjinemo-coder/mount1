@@ -3,6 +3,7 @@ import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
+import { AutoRefresh } from './auto-refresh';
 import { KpiCard } from './kpi-card';
 import { TechnicianBars } from './technician-bars';
 import { UnassignedBanner } from './unassigned-banner';
@@ -123,7 +124,10 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header className="flex items-baseline justify-between">
           <h2 className="text-2xl font-bold">오늘 운영 현황</h2>
-          <p className="text-muted-foreground text-sm">기준 시각 {TIME_FORMATTER.format(new Date())}</p>
+          <div className="flex flex-col items-end gap-1 text-right">
+            <p className="text-muted-foreground text-sm">기준 시각 {TIME_FORMATTER.format(new Date())}</p>
+            <AutoRefresh />
+          </div>
         </header>
 
         {unassignedCount > 0 ? <UnassignedBanner count={unassignedCount} /> : null}
