@@ -13,8 +13,12 @@ cd D:\MOUNT1
 git pull
 supabase db push
 ```
-- 적용 대상: `0005_rpc.sql` (RPC 6종) + `0006_security_fix.sql` (보안 fix)
-- 결과: dev DB 에 RPC 함수 + 보안 정책 활성화
+- 적용 대상 (4개):
+  - `0005_rpc.sql` (RPC 6종)
+  - `0006_security_fix.sql` (auditor 권한 분리 + trigger search_path + view security_invoker)
+  - `0007_security_round2.sql` (technicians cs/ops/auditor read 정책)
+  - `0008_storage_rls.sql` (Storage 버킷 RLS — photos-hot · signatures · cls-reports-draft)
+- 결과: dev DB 에 RPC 함수 + 보안 정책 + Storage 정책 활성화
 - 확인: 에러 없이 "Finished supabase db push" 메시지
 
 ### 2. types regenerate
@@ -84,7 +88,7 @@ select id, role, status from admin_users where role = 'super_admin';
 - 현재 .env.local 에 추측 매핑된 2 DSN 이 정확히 driver/admin 매칭되는지 검증
 - 다르면 .env.local 의 두 줄 swap
 
-### 6. Supabase Storage 버킷 생성 (사진 업로드 R5 전제)
+### 6. Supabase Storage 버킷 생성 (사진 업로드 R5 활성화 — 즉시 권장)
 - https://supabase.com/dashboard/project/nzphbeookxotdjzishqn/storage/buckets
 - "New bucket" → 다음 3개 모두 생성:
   - `photos-hot` (public OFF · RLS 적용 예정)
