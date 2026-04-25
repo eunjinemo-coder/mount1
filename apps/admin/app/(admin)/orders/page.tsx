@@ -1,6 +1,7 @@
 import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
-import { Badge, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
+import { Badge, Button, Card, CardContent } from '@mount/ui';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
@@ -28,6 +29,27 @@ const STATUS_LABEL: Record<string, string> = {
   closed: '마감',
 };
 
+const FILTER_GROUPS = [
+  { id: 'all', label: '전체', statuses: null },
+  { id: 'pending', label: '대기', statuses: ['received', 'happy_call_pending', 'happy_call_done'] },
+  { id: 'scheduled', label: '예약', statuses: ['scheduled', 'assigned'] },
+  { id: 'progress', label: '진행', statuses: ['en_route', 'on_site', 'in_progress'] },
+  {
+    id: 'completed',
+    label: '완료',
+    statuses: ['no_drill_completed', 'drill_converted_completed'],
+  },
+  { id: 'payment', label: '결제', statuses: ['awaiting_payment', 'payment_sent', 'paid'] },
+  {
+    id: 'cancelled',
+    label: '취소',
+    statuses: ['cancel_requested', 'cancel_confirmed_coupang_transfer'],
+  },
+  { id: 'closed', label: '마감', statuses: ['closed'] },
+] as const;
+
+const PAGE_SIZE = 25;
+
 const TIME_FORMATTER = new Intl.DateTimeFormat('ko-KR', {
   month: 'short',
   day: 'numeric',
@@ -37,7 +59,9 @@ const TIME_FORMATTER = new Intl.DateTimeFormat('ko-KR', {
   timeZone: 'Asia/Seoul',
 });
 
-export default async function OrdersPage(): Promise<ReactElement> {
+export default async function OrdersPage(props: {
+  searchParams: Promise<{ filter?: string; page?: string }>;
+}): Promise<ReactElement> {
   try {
     await requireRole(['admin']);
   } catch (error) {
@@ -46,28 +70,68 @@ export default async function OrdersPage(): Promise<ReactElement> {
     throw error;
   }
 
+  const { filter: filterParam, page: pageParam } = await props.searchParams;
+  const activeFilter = FILTER_GROUPS.find((g) => g.id === filterParam) ?? FILTER_GROUPS[0]!;
+  const page = Math.max(1, Number(pageParam ?? '1'));
+  const offset = (page - 1) * PAGE_SIZE;
+
   const client = await getServerClient();
-  const { data } = await client
+  let query = client
     .from('v_orders_dashboard')
-    .select('id, status, scheduled_installation_at, technician_name, address_region_sigungu, tv_display, last_payment_status')
-    .order('scheduled_installation_at', { ascending: false, nullsFirst: false })
-    .limit(100);
+    .select(
+      'id, status, scheduled_installation_at, technician_name, address_region_sigungu, tv_display, last_payment_status',
+      { count: 'exact' },
+    )
+    .order('scheduled_installation_at', { ascending: false, nullsFirst: false });
+
+  if (activeFilter.statuses) {
+    query = query.in('status', activeFilter.statuses);
+  }
+
+  query = query.range(offset, offset + PAGE_SIZE - 1);
+  const { data, count } = await query;
 
   const orders = data ?? [];
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  const buildHref = (overrides: { filter?: string; page?: number }) => {
+    const params = new URLSearchParams();
+    const f = overrides.filter ?? activeFilter.id;
+    if (f !== 'all') params.set('filter', f);
+    if (overrides.page && overrides.page > 1) params.set('page', String(overrides.page));
+    const qs = params.toString();
+    return qs ? `/orders?${qs}` : '/orders';
+  };
 
   return (
     <AdminShell activeNav="orders" title="Orders">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header className="flex items-baseline justify-between">
           <h2 className="text-2xl font-bold">전체 주문</h2>
-          <p className="text-muted-foreground text-sm">최근 100건 (필터·정렬 R5 추가 예정)</p>
+          <p className="text-muted-foreground text-sm">
+            {activeFilter.label} {totalCount}건 · 페이지 {page}/{totalPages}
+          </p>
         </header>
 
+        <nav className="flex flex-wrap gap-2">
+          {FILTER_GROUPS.map((group) => {
+            const isActive = group.id === activeFilter.id;
+            return (
+              <Button
+                asChild
+                key={group.id}
+                size="sm"
+                variant={isActive ? 'default' : 'outline'}
+              >
+                <Link href={buildHref({ filter: group.id, page: 1 })}>{group.label}</Link>
+              </Button>
+            );
+          })}
+        </nav>
+
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">주문 목록</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             {orders.length === 0 ? (
               <p className="text-muted-foreground text-sm">조회된 주문이 없습니다.</p>
             ) : (
@@ -93,7 +157,11 @@ export default async function OrdersPage(): Promise<ReactElement> {
                         </td>
                         <td className="py-2">{order.address_region_sigungu ?? '-'}</td>
                         <td className="text-muted-foreground py-2">{order.tv_display ?? '-'}</td>
-                        <td className="py-2">{order.technician_name ?? <span className="text-muted-foreground">미배차</span>}</td>
+                        <td className="py-2">
+                          {order.technician_name ?? (
+                            <span className="text-muted-foreground">미배차</span>
+                          )}
+                        </td>
                         <td className="py-2">
                           <Badge variant="outline">
                             {STATUS_LABEL[order.status ?? ''] ?? order.status}
@@ -110,6 +178,20 @@ export default async function OrdersPage(): Promise<ReactElement> {
             )}
           </CardContent>
         </Card>
+
+        {totalPages > 1 ? (
+          <div className="flex items-center justify-between text-sm">
+            <Button asChild disabled={page <= 1} size="sm" variant="outline">
+              <Link href={buildHref({ page: Math.max(1, page - 1) })}>← 이전</Link>
+            </Button>
+            <span className="text-muted-foreground">
+              {page} / {totalPages}
+            </span>
+            <Button asChild disabled={page >= totalPages} size="sm" variant="outline">
+              <Link href={buildHref({ page: Math.min(totalPages, page + 1) })}>다음 →</Link>
+            </Button>
+          </div>
+        ) : null}
       </div>
     </AdminShell>
   );
