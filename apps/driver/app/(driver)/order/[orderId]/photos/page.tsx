@@ -51,16 +51,30 @@ export default async function PhotosPage(props: {
     redirect(`/order/${orderId}`);
   }
 
-  // 기존 업로드 사진 조회 (자기 사진만)
+  // 기존 업로드 사진 조회 (자기 사진만) + signed URL 발급 (1시간 만료)
   const { data: existingPhotos } = await client
     .from('photos')
     .select('slot, supabase_path, uploaded_at')
     .eq('order_id', orderId)
     .eq('technician_id', session.technicianId ?? '');
 
-  const photosBySlot = new Map<string, { path: string | null; uploadedAt: string | null }>();
+  const photosBySlot = new Map<
+    string,
+    { path: string | null; uploadedAt: string | null; signedUrl: string | null }
+  >();
   for (const p of existingPhotos ?? []) {
-    photosBySlot.set(p.slot, { path: p.supabase_path, uploadedAt: p.uploaded_at });
+    let signedUrl: string | null = null;
+    if (p.supabase_path) {
+      const { data: signed } = await client.storage
+        .from('photos-hot')
+        .createSignedUrl(p.supabase_path, 3600);
+      signedUrl = signed?.signedUrl ?? null;
+    }
+    photosBySlot.set(p.slot, {
+      path: p.supabase_path,
+      uploadedAt: p.uploaded_at,
+      signedUrl,
+    });
   }
 
   const buildSlot = (slot: string) => ({
@@ -68,6 +82,7 @@ export default async function PhotosPage(props: {
     label: PHASE_LABEL[slot] ?? slot,
     uploaded: photosBySlot.has(slot),
     path: photosBySlot.get(slot)?.path ?? null,
+    signedUrl: photosBySlot.get(slot)?.signedUrl ?? null,
   });
 
   return (

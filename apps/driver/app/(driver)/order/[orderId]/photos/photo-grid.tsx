@@ -10,6 +10,7 @@ export interface PhotoSlotData {
   label: string;
   uploaded: boolean;
   path: string | null;
+  signedUrl: string | null;
 }
 
 export interface PhotoGridProps {
@@ -78,17 +79,28 @@ function PhotoSlot({ orderId, slot }: { orderId: string; slot: PhotoSlotData }):
   return (
     <div className="flex flex-col gap-2">
       <button
-        className={`relative flex h-32 flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed transition-colors ${
-          uploaded
-            ? 'border-success bg-success/5'
-            : 'border-input hover:border-primary hover:bg-muted/40'
+        className={`relative flex h-32 flex-col items-center justify-center gap-1 overflow-hidden rounded-md border-2 border-dashed transition-colors ${
+          uploaded ? 'border-success' : 'border-input hover:border-primary hover:bg-muted/40'
         }`}
         disabled={isPending}
-        onClick={uploaded ? undefined : triggerSelect}
+        onClick={triggerSelect}
         type="button"
       >
         {isPending ? (
           <Loader2 className="text-muted-foreground size-6 animate-spin" />
+        ) : uploaded && slot.signedUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              alt={slot.label}
+              className="absolute inset-0 size-full object-cover"
+              src={slot.signedUrl}
+            />
+            <span className="bg-success/90 text-success-foreground absolute right-1 bottom-1 flex items-center gap-1 rounded px-1.5 py-0.5 text-xs">
+              <CheckCircle2 className="size-3" />
+              완료
+            </span>
+          </>
         ) : uploaded ? (
           <>
             <CheckCircle2 className="text-success size-6" />
