@@ -54,8 +54,9 @@ supabase/.temp/
 # Vercel
 .vercel/
 
-# Generated DB types
+# Generated DB types (정상 위치는 packages/db/src/, root 의 동명 파일은 잘못된 redirect 산출물)
 packages/db/src/types.generated.ts
+/types.generated.ts
 
 # AI assistant artifacts
 context-snapshot.json
