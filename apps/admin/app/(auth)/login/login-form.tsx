@@ -30,11 +30,6 @@ const ROLE_OPTIONS = [
   { value: 'auditor', label: '감사' },
 ] as const;
 
-function toSafeRedirectPath(value?: string): string | undefined {
-  if (!value) return undefined;
-  return value.startsWith('/') && !value.startsWith('//') ? value : undefined;
-}
-
 export function AdminLoginForm(props: AdminLoginFormProps): ReactElement {
   const [adminRole, setAdminRole] = useState('cs_admin');
   const [username, setUsername] = useState('');

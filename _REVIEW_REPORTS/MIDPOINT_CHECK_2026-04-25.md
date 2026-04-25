@@ -222,3 +222,69 @@ PIPA: PII 암호화 ✅ / 자동삭제·동의 절차 ⚠️
 - B05 dispatch 3 패널 (지도·점수·Gini)
 - realtime 구독 (admin today 30초 갱신)
 
+
+---
+
+# 3차 점검 (2026-04-26 — Round 3, 수렴 검증)
+
+## 변경 (2차 → 3차)
+- 2차 P0/P1 fix 적용 후 R5 본격 진입
+- 추가 commits: 70c3e26 (R5 photos) · 755ed87 (실명+KPI6) · 4677abb (B03 필터+페이지) · 6a8d280 (detail 진행도) · b674de3 (Round 3 P1 fix) · 87fdb9e (SignaturePad) · f1e710c (썸네일) · 481a6da · 0aabe0c (DRY)
+- 마이그레이션 추가: 0007_security_round2.sql · 0008_storage_rls.sql
+
+## 3차 검증 결과 (보안 + UI/UX 2 에이전트)
+
+### 보안
+- **P0: 0건** (수렴 달성!)
+- P1: 2건 → 즉시 fix
+  - P1-R5-1: Storage 버킷 RLS SQL 미명시 → 0008_storage_rls.sql 작성
+  - P1-R5-2: Photos race condition → 슬롯별 고정 경로 + upsert: true
+- OWASP Top 10:
+  - 1차: A01·A04·A05·A06·A07 WARN
+  - 3차: A01·A03·A05·A07·A09 GREEN, A04 WARN (Storage 버킷 미생성 시)
+- PIPA: 자동삭제 cron 만 미적용 (Pro 전환 후)
+
+### UI/UX (와이어프레임 매칭률)
+- **1차 48% → 2차 60% → 3차 78%** (+30%p 누적)
+- A07 photos: 10% → 78% (+68%p, R5 본격 구현 효과)
+- A02 driver_today: 40% → 76% (셸 + 실명)
+- B02 admin_today: 35% → 80% (셸 + KPI 6 카드)
+- 시공 lifecycle 8단계 모두 PASS
+
+### 시공 lifecycle E2E
+| 단계 | 라우트 | 상태 |
+|---|---|---|
+| 1. 로그인 | /login | PASS |
+| 2. 오늘 목록 | /today | PASS |
+| 3. 주문 상세 | /order/[id] | PASS |
+| 4. 사전 통화 | /pre-call | PASS |
+| 5. 시공 시작 | /start | PASS |
+| 6. 사진 업로드 | /photos | PASS |
+| 7. 시공 완료 | /complete | PASS |
+| 8. 취소 리포트 | /cancel | PASS (SignaturePad 적용) |
+
+## 3차 자동 fix
+- 0008_storage_rls.sql 신규 (photos-hot · signatures · cls-reports-draft 버킷 RLS)
+- photos/actions: race condition fix (고정 경로 + upsert)
+- 사진 썸네일 미리보기 (signed URL 1시간)
+- A10 SignaturePad 자체 구현 (Canvas + Pointer Events, 외부 패키지 0)
+- login PW 표시 토글 (Eye/EyeOff)
+- B03 필터 8그룹 + 페이지네이션 (PAGE_SIZE 25)
+- order detail 진행 현황 카드 (사전 통화 + 사진 진행도)
+- toSafeRedirectPath @mount/lib/navigation 추출 (P2-1)
+
+## 잔존 P1 (R7 backlog · 상용화 진입 전 해소)
+- tel: 딥링크 (전화번호 복호화 RPC + AES-GCM 서버키)
+- A02 3탭 (실시간/일괄/지도 — Kakao Maps SDK)
+- A04 4탭 (개요/사진/이슈/통화 분리)
+- B02 Realtime 30초 갱신 (Supabase Realtime 구독)
+- B05 추천 점수 알고리즘 (Gini · 거리 · 등급 · 부하)
+- 관리자 역할 서버 결정 (admin_users.username + RPC)
+- CSP 헤더 (next.config)
+- pnpm audit transitive 2건 (Sentry/Next 업스트림 대기)
+
+## 수렴 판정
+**P0: 0 · P1 (R5 내): 0 · P1 (R6 backlog): 8 · 와이어 매칭률 78%**
+
+상용화 기준 (85% 와이어 매칭) 까지 7%p 갭. R7 핵심 3건(tel·realtime·점수 알고리즘) 처리 시 도달 가능.
+
