@@ -40,3 +40,13 @@
 - 2026-04-25 · DB fix (`f18e973`) · `v_orders_dashboard.last_payment_status` 를 `payment_links.status` 기반으로 수정 · ERD §4.1 본문이 `payments.status` 참조했으나 §3.13 payments 정의에 status 컬럼 없음(SQLSTATE 42703) → 결제 lifecycle 단일 원천인 payment_links.status 로 교체. wiki 02_ERD.md §4.1 본문 정정은 working tree 에 남기고 다음 wiki 세션에서 다른 산재 변경과 묶어 commit 예정.
 - 2026-04-25 · DB fix (`d2f03ac`) · RLS 헬퍼 함수 5개 (`admin_role`·`is_admin`·`is_super_admin`·`technician_id`·`has_admin_role`)를 `auth` 스키마 → `public` 스키마로 이동 · Supabase 가 auth 스키마 사용자 함수 생성 차단(SQLSTATE 42501) 하는 보안 정책 때문. `auth.jwt()` · `auth.uid()` 는 built-in 이라 호출만 유지. 04_PERMISSIONS §5.1 본문은 auth.* 로 정의되어 있으나 SQL 실현 시 public 우선. 기획서 정정은 wiki 세션 묶음.
 - 2026-04-25 · DB 적용 결과 · dev (`mountpartners-dev` · `nzphbeookxotdjzishqn`) 에 0001/0002/0004 push 완료. supabase_migrations 기록 정상. Custom Access Token Hook 함수 배포 완료, Dashboard 등록은 은진님 수동 액션 대기.
+
+## 2026-04-25 · Phase 0 Day 0.3 Tailwind v3 + shadcn/ui
+
+- 2026-04-25 · 도구 · **Tailwind v3.4.19** 채택 (NEXT_STEP "v3 + shadcn New York" 명시 우선) · 09_COMPONENT_LIBRARY §1.2 의 "Tailwind v4: Yes" 표기는 무시 — v3 가 stable workflow 이고 jiti 기반 .ts config 안정.
+- 2026-04-25 · 디자인 · **토큰 이중 시스템 채택** · shadcn HSL 컨벤션(`--primary`, `--background` 등)을 1차 (UI 컴포넌트 직접 사용) + 08_TOKEN_EXPORT hex 변수(`--color-primary-600` 등)를 2차 (Figma Token Studio sync 보존). Brand Blue 매핑: `--color-primary-600 #2563EB` ↔ `--primary 221.2 83.2% 53.3%`. base palette 는 09 §1.2 결정대로 Zinc/cool gray. `tailwind.preset.ts` 에 brand·slate alias 도 노출 (`bg-brand-600` 등 사용 가능).
+- 2026-04-25 · 디자인 · 다크 모드 variables skeleton 포함 (`.dark` 와 `[data-theme="dark"]` 두 셀렉터) — Phase 2 토글 도입 전까지 미사용. 향후 `B-12` 다크모드 flag 활성 시 즉시 작동.
+- 2026-04-25 · 디자인 · `tailwindcss-animate` plugin 미사용 · 의존성 최소화 차원으로 keyframes(accordion-up/down)을 preset 내 직접 정의. shadcn dialog/sheet 추가 시 충분.
+- 2026-04-25 · UI · **shadcn/ui Button (cva)** 채택 · `class-variance-authority` + `@radix-ui/react-slot` + `lucide-react` 의존성 추가. 9개 spec 표준 (변형 6 × 사이즈 4 + asChild). `forwardRef` · `displayName` 포함하여 React DevTools 식별 가능.
+- 2026-04-25 · 빌드 · PostCSS config 는 `.mjs` ESM 형식 (`postcss-import` + `tailwindcss` + `autoprefixer`) · `.cjs` 채택 시 ESLint flat config 의 `no-undef` 충돌 발생하여 `.mjs` 로 전환. workspace `@import '@mount/config/tokens.css'` 가 postcss-import 로 해소됨.
+- 2026-04-25 · 검증 · `pnpm typecheck` 5/5 · `pnpm lint` 5/5 · `pnpm build` 2/2 (Next.js 16.2.4 Turbopack · admin 33.2s · driver 34.0s) 모두 통과. `tailwindcss-animate` 등 추가 plugin 미사용 상태에서도 Button cva variants 정상 컴파일.

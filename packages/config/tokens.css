@@ -1,39 +1,184 @@
 /*
  * Design Tokens · 마운트파트너스
- * source_of_truth: 04_DESIGN_SYSTEM/08_TOKEN_EXPORT.md
- * 본 파일은 해당 문서 export 와 동기화 필요 (수동 sync 예정).
+ * source_of_truth: 04_DESIGN_SYSTEM/08_TOKEN_EXPORT.md (hex 원천)
+ *                  04_DESIGN_SYSTEM/09_COMPONENT_LIBRARY.md (shadcn New York · Zinc)
+ *
+ * 두 시스템 병존:
+ *   · shadcn 컨벤션(HSL `--primary` 등) — Tailwind preset · UI 컴포넌트가 직접 사용
+ *   · 08 hex 변수(`--color-primary-600` 등) — 디자이너 Figma Token Studio sync 원천 보존
+ *
+ * Primary 매핑: 08 #2563EB (blue-600) → shadcn `--primary: 221.2 83.2% 53.3%`
+ * Base palette: shadcn Zinc (09 §1.2 결정)
  */
 
+/* ============================================================================
+   1. shadcn New York — Light Mode (default)
+   ============================================================================ */
 :root {
-  /* 색상 (placeholder — 08_TOKEN_EXPORT.md 기준 교체 예정) */
-  --mp-color-bg: #ffffff;
-  --mp-color-surface: #f8fafc;
-  --mp-color-text-primary: #0f172a;
-  --mp-color-text-secondary: #475569;
-  --mp-color-accent: #2563eb;
-  --mp-color-danger: #dc2626;
-  --mp-color-success: #16a34a;
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
 
-  /* 간격 */
-  --mp-space-1: 0.25rem;
-  --mp-space-2: 0.5rem;
-  --mp-space-3: 0.75rem;
-  --mp-space-4: 1rem;
-  --mp-space-6: 1.5rem;
-  --mp-space-8: 2rem;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
 
-  /* Radius */
-  --mp-radius-sm: 0.25rem;
-  --mp-radius-md: 0.5rem;
-  --mp-radius-lg: 0.75rem;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+
+  /* Brand Blue (08 §2 primary-600 #2563EB) → shadcn primary */
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 221.2 83.2% 53.3%;
+
+  --radius: 0.5rem;
+}
+
+/* ============================================================================
+   2. Dark Mode (Phase 2 · 토글 클래스 .dark 또는 [data-theme="dark"])
+   ============================================================================ */
+.dark,
+[data-theme='dark'] {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 240 5.9% 10%;
+
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+
+  --success: 142 71% 35%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 38 80% 40%;
+  --warning-foreground: 0 0% 100%;
+
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 217.2 91.2% 59.8%;
+}
+
+/* ============================================================================
+   3. 08 hex 원천 변수 (Figma Token Studio sync 보존 · UI 컴포넌트 직접 사용 비권장)
+   ============================================================================ */
+:root {
+  /* Colors — Primary (blue scale) */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  /* Colors — Neutral (cool gray / slate) */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  /* Colors — Semantic */
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+  --color-accent-500: #f97316;
+  --color-accent-700: #c2410c;
+
+  /* Spacing (4px base) */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-2: 0 2px 4px rgba(15, 23, 42, 0.08);
+  --shadow-3: 0 4px 8px rgba(15, 23, 42, 0.1);
+  --shadow-4: 0 8px 16px rgba(15, 23, 42, 0.12);
+  --shadow-5: 0 16px 32px rgba(15, 23, 42, 0.16);
+
+  /* Z-Index */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-fixed: 1200;
+  --z-modal-bg: 1300;
+  --z-modal: 1400;
+  --z-drawer: 1500;
+  --z-toast: 1600;
+  --z-tooltip: 1700;
 
   /* Typography */
-  --mp-font-sans:
+  --font-sans:
     'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
-    'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-  --mp-font-size-xs: 0.75rem;
-  --mp-font-size-sm: 0.875rem;
-  --mp-font-size-base: 1rem;
-  --mp-font-size-lg: 1.125rem;
-  --mp-font-size-xl: 1.25rem;
+    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Motion */
+  --duration-fast: 100ms;
+  --duration-base: 150ms;
+  --duration-moderate: 200ms;
+  --duration-slow: 300ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }

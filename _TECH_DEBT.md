@@ -11,20 +11,20 @@
 - 원인: Sentry / Better Stack 미설정 상태에서 최소 로깅 확보
 - 상환: Step 6 관측성 단계에서 `Sentry.addBreadcrumb` / `Sentry.captureException` 로 교체. console 의존 제거.
 
-### TD-002 · Tailwind 미통합
-- 위치: `apps/{driver,admin}/app/globals.css`, `packages/config/tailwind.preset.ts`
+### ~~TD-002~~ · Tailwind 미통합 — **상환 완료 (2026-04-25)**
+- 위치: `packages/config/{tokens.css,tailwind.preset.ts}` · `apps/{driver,admin}/{tailwind.config.ts,postcss.config.mjs,app/globals.css}`
 - 원인: 스캐폴딩 단계 복잡도 제어
-- 상환: 차기 세션 별도 Step — Tailwind v3 + `packages/config/tailwind.preset.ts` 본문 + shadcn/ui New York preset 통합. 양쪽 앱 globals.css 에 `@tailwind` directives 추가.
+- 상환: Tailwind v3.4.19 + shadcn/ui New York preset 통합 완료. 토큰 시스템은 shadcn HSL 변수(`--primary` 등) + 08 hex 변수(`--color-primary-600` 등) 병존 — Brand Blue 매핑(#2563EB → hsl 221.2 83.2% 53.3%). Pretendard 폰트, dark mode 변수 skeleton, safe-area helper 클래스 포함. typecheck 5/5 · lint 5/5 · build 2/2 통과.
 
 ### ~~TD-003~~ · Supabase migration 본문 없음 — **상환 완료 (2026-04-25)**
 - 위치: `supabase/migrations/0001_init.sql · 0002_rls.sql · 0003_cron.sql · 0004_hooks.sql`
 - 원인: `02_IA/02_ERD.md` §3 의 21 테이블 DDL 이관 분량
 - 상환: 4 파일 작성 완료 — ERD §3 21 테이블 전체 DDL + 뷰 2 + 트리거 3 + RLS 55 정책 + pg_cron 3 스케줄 (stub 함수) + Custom Access Token Hook. 은진님 `supabase db push` + 대시보드 Hook 등록으로 적용.
 
-### TD-004 · Button 컴포넌트 Tailwind class 미주입
+### ~~TD-004~~ · Button 컴포넌트 Tailwind class 미주입 — **상환 완료 (2026-04-25)**
 - 위치: `packages/ui/src/button.tsx`
 - 원인: TD-002 종속
-- 상환: TD-002 와 동시 처리 (shadcn/ui Button variants 복제).
+- 상환: shadcn/ui Button (cva variants) 복제 — 6 variants (default·destructive·outline·secondary·ghost·link) × 4 sizes (default·sm·lg·icon) · `asChild` (Radix Slot) 지원 · `forwardRef` · 09_COMPONENT_LIBRARY §3 매트릭스 일치. `buttonVariants` 도 `@mount/ui` 에서 export 하여 다른 컴포넌트(Link 등) wrapper 에서 재사용 가능.
 
 ### TD-005 · `types.generated.ts` placeholder
 - 위치: `packages/db/src/types.generated.ts`

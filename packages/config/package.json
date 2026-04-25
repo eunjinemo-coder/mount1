@@ -7,5 +7,12 @@
     "./tokens.css": "./tokens.css",
     "./tailwind-preset": "./tailwind.preset.ts"
   },
-  "files": ["tokens.css", "tailwind.preset.ts"]
+  "files": ["tokens.css", "tailwind.preset.ts"],
+  "peerDependencies": {
+    "tailwindcss": "^3.4.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3"
+  }
 }
