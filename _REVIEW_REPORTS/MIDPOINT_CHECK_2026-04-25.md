@@ -177,3 +177,48 @@ PIPA: PII 암호화 ✅ / 자동삭제·동의 절차 ⚠️
 - 보안 검증: security-reviewer 에이전트
 - 빌드/통합: general-purpose 에이전트
 - UI/UX 통합: e2e-runner 에이전트
+
+---
+
+# 2차 점검 (2026-04-25/26 — Round 2)
+
+## 변경
+- 1차 P0 6건 자동 fix 적용 (commit a896288)
+- R4 화면 추가: A05 pre-call · A10 cancel · B03 orders · technicians · stub 7개 (commit 577b011)
+- 글로벌 셸 도입: DriverShell + AdminShell (와이어프레임 매칭률 ~48% → ~60%)
+
+## 4 에이전트 결과 (병렬)
+| 영역 | 1차 | 2차 | 비고 |
+|---|---|---|---|
+| 코드 | WARN | WARN | 신규 P0 2 (photos requireRole, cancel orders.update 미체크) |
+| 보안 | WARN | WARN | 신규 P0 1 (cancel stub UUID + 내부정보 노출) + 0005 idempotency_key 누락 발견 |
+| 빌드/통합 | GREEN | GREEN | 22 라우트 빌드 성공 |
+| UI/UX | 48% | 60% | DriverShell+AdminShell 효과 (+12%p) |
+
+## 2차 자동 fix (commit 0a96b04)
+- photos/page requireRole 추가
+- cancel/actions: session.technicianId 사용 + UUID 검증 + orders.update 오류 체크 + 내부 정보 노출 제거
+- pre-call/actions UUID 검증 + page 상태 검증
+- order detail customer 조회 fix (orderId → customer_id)
+- 0005 notifications insert idempotency_key 추가 (RPC 충돌 방지)
+- 0006 auditor 정책 멱등성 (drop if exists)
+- 0007_security_round2.sql 신규 (technicians cs/ops/auditor read 정책)
+- middleware → proxy (Next.js 16 deprecation 해소)
+- technicians/page phone 마스킹
+
+## R5 진입 (commit 70c3e26 · 755ed87 · 4677abb)
+- A07 photos 본격 구현 (Storage 6 슬롯)
+- 실 technician_name 조회
+- B02 KPI 6 카드 (미결제·이슈 추가)
+- B03 필터 8그룹 + 페이지네이션 (PAGE_SIZE=25)
+
+## 잔존 P1 (R6 backlog)
+- 관리자 역할 서버 결정 (admin_users.username 컬럼 + RPC)
+- A05 결과 7종 + tel: 딥링크 (전화번호 복호화 RPC 필요)
+- A10 5 step 폼 + SignaturePad 캔버스
+- driver/order detail 4 탭 (개요·사진·이슈·통화)
+- CSP 헤더 설정
+- A02 driver today 3 탭 (실시간·일괄·지도)
+- B05 dispatch 3 패널 (지도·점수·Gini)
+- realtime 구독 (admin today 30초 갱신)
+

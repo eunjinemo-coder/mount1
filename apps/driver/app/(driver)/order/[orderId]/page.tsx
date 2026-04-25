@@ -66,15 +66,36 @@ export default async function OrderDetailPage(props: {
   const order = orderResult.data;
   if (!order) notFound();
 
-  const customerResult = order.customer_id
-    ? await client
-        .from('v_customer_for_technician')
-        .select('*')
-        .eq('id', order.customer_id)
-        .maybeSingle()
-    : { data: null };
+  const [customerResult, photosResult, callLogsResult] = await Promise.all([
+    order.customer_id
+      ? client
+          .from('v_customer_for_technician')
+          .select('*')
+          .eq('id', order.customer_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    client.from('photos').select('slot').eq('order_id', orderId),
+    client
+      .from('call_logs')
+      .select('id, type, called_at, call_outcome')
+      .eq('order_id', orderId)
+      .order('called_at', { ascending: false })
+      .limit(5),
+  ]);
 
   const customer = customerResult.data;
+  const photos = photosResult.data ?? [];
+  const callLogs = callLogsResult.data ?? [];
+
+  const preCount = photos.filter((p) => ['pre_tv_screen', 'pre_wall'].includes(p.slot)).length;
+  const postCount = photos.filter((p) =>
+    ['post_front', 'post_left', 'post_right'].includes(p.slot),
+  ).length;
+  const preCallDone = callLogs.some(
+    (c) =>
+      c.type === 'pre_arrival_30min' &&
+      ['answered', 'manual_marked_done'].includes(c.call_outcome ?? ''),
+  );
   const region = [customer?.address_region_sido, customer?.address_region_sigungu]
     .filter(Boolean)
     .join(' ');
@@ -134,6 +155,32 @@ export default async function OrderDetailPage(props: {
           </CardHeader>
           <CardContent>
             <p className="text-base">{tvDisplay || 'TV 정보 없음'}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">진행 현황</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">사전 통화</span>
+              <span className={preCallDone ? 'text-success font-medium' : 'text-destructive'}>
+                {preCallDone ? '✓ 완료' : '미완료'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">시공 전 사진 (필수 2장)</span>
+              <span className={preCount >= 2 ? 'text-success font-medium' : 'text-destructive'}>
+                {preCount}/2
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">완료 사진 (필수 3장)</span>
+              <span className={postCount >= 3 ? 'text-success font-medium' : 'text-muted-foreground'}>
+                {postCount}/3
+              </span>
+            </div>
           </CardContent>
         </Card>
 
