@@ -50,3 +50,15 @@
 - 2026-04-25 · UI · **shadcn/ui Button (cva)** 채택 · `class-variance-authority` + `@radix-ui/react-slot` + `lucide-react` 의존성 추가. 9개 spec 표준 (변형 6 × 사이즈 4 + asChild). `forwardRef` · `displayName` 포함하여 React DevTools 식별 가능.
 - 2026-04-25 · 빌드 · PostCSS config 는 `.mjs` ESM 형식 (`postcss-import` + `tailwindcss` + `autoprefixer`) · `.cjs` 채택 시 ESLint flat config 의 `no-undef` 충돌 발생하여 `.mjs` 로 전환. workspace `@import '@mount/config/tokens.css'` 가 postcss-import 로 해소됨.
 - 2026-04-25 · 검증 · `pnpm typecheck` 5/5 · `pnpm lint` 5/5 · `pnpm build` 2/2 (Next.js 16.2.4 Turbopack · admin 33.2s · driver 34.0s) 모두 통과. `tailwindcss-animate` 등 추가 plugin 미사용 상태에서도 Button cva variants 정상 컴파일.
+
+## 2026-04-25 · Phase 0 Day 0.4 Sentry + PostHog 초기 연결 (TD-001 상환)
+
+- 2026-04-25 · 관측성 · **`@sentry/nextjs` 9.47.1** 채택 · 공식 peer 는 next ^15 까지지만 next 16.2.4 에서 build·typecheck·lint 모두 통과 확인 (peer warning 무시). 9.x 는 instrumentation-client.ts / instrumentation.ts 신규 패턴 권장.
+- 2026-04-25 · 관측성 · **wrapper 패턴 채택** (06_EXTENSIBILITY §7.2) · `@mount/lib/error-reporting` (captureError/captureMessage/addBreadcrumb/setUser/scrubEvent/scrubText) + `@mount/lib/analytics` (analytics.track/identify/reset/page + initAnalytics) export. 컴포넌트 코드는 `@sentry/nextjs` · `posthog-js` 직접 import 금지 — Phase 2 DataDog 등 교체 시 import 전면 수정 회피.
+- 2026-04-25 · 보안 · **PII Scrubber** 도입 · 한국 휴대폰(010-1234-5678 / 01012345678 / +82-10-...) + 이메일 정규식. Sentry `beforeSend` · `beforeSendTransaction` 양쪽 적용. PIPA 준수 + 헌법 제3조 Security-First. `setUser` 도 ID + role 만 전송, 이름·전화 절대 미포함.
+- 2026-04-25 · 관측성 · **DSN noop 패턴** · 환경변수(`NEXT_PUBLIC_SENTRY_DSN_DRIVER` / `NEXT_PUBLIC_SENTRY_DSN_ADMIN` / `NEXT_PUBLIC_POSTHOG_KEY` / `NEXT_PUBLIC_POSTHOG_HOST`) 미설정 시 init 스킵, wrapper 호출 silent noop. Sentry/PostHog 가입 전에도 빌드·런타임 안전.
+- 2026-04-25 · 관측성 · **Sampling 보수적** · `tracesSampleRate: 0.1` (10%) · `replaysSessionSampleRate: 0.0` · `replaysOnErrorSampleRate: 1.0` (에러 시 100% replay). MVP egress·요금 통제 우선, Phase 2 에 KPI 따라 조정.
+- 2026-04-25 · 관측성 · **logger 상환** · `log.info/warn/error/debug` 모두 `addBreadcrumb` / `captureError` 자동 호출. console 은 dev 환경 보조 (prod 빌드에서도 stdout 보존 — Vercel 로그). TD-001 상환.
+- 2026-04-25 · 관측성 · **withSentryConfig 옵션** · `silent: !CI` (로컬 빌드 조용) · `disableLogger: true` (Sentry SDK 자체 logger 무음) · `widenClientFileUpload: true` (chunk 더 많이 source map 매핑) · `sourcemaps.disable: !SENTRY_AUTH_TOKEN` (token 없으면 source map 업로드 skip). `hideSourceMaps` 는 Sentry 9 deprecated 라 제거 후 `sourcemaps.disable` 으로 대체.
+- 2026-04-25 · UI · **PostHogProvider** 클라이언트 컴포넌트 도입 · `app/PostHogProvider.tsx` 가 `useEffect` 에서 1회 init. layout.tsx 가 children 을 감쌈. SPA 라우트 변경 시 page() 자동 호출은 Phase 2 (Next.js usePathname listener).
+- 2026-04-25 · 검증 · typecheck 5/5 · lint 5/5 · build 2/2 (driver 51s · admin 59s) 모두 통과. peer warning 1건(@sentry/nextjs ↔ next 16) 외 이슈 없음.

@@ -56,3 +56,6 @@ supabase/.temp/
 
 # Generated DB types
 packages/db/src/types.generated.ts
+
+# AI assistant artifacts
+context-snapshot.json

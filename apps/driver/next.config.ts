@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -24,4 +25,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry source map 업로드는 SENTRY_AUTH_TOKEN 있을 때만 작동.
+// authToken 없으면 build 는 통과 + 업로드만 skip.
+export default withSentryConfig(nextConfig, {
+  silent: !process.env.CI,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT_DRIVER,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  disableLogger: true,
+  widenClientFileUpload: true,
+  reactComponentAnnotation: { enabled: false },
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});

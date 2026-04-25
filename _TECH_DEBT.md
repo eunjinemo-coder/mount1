@@ -6,10 +6,10 @@
 
 ## 미상환
 
-### TD-001 · logger · `console.*` 직접 호출
+### ~~TD-001~~ · logger · `console.*` 직접 호출 — **상환 완료 (2026-04-25)**
 - 위치: `packages/lib/src/logger.ts`
 - 원인: Sentry / Better Stack 미설정 상태에서 최소 로깅 확보
-- 상환: Step 6 관측성 단계에서 `Sentry.addBreadcrumb` / `Sentry.captureException` 로 교체. console 의존 제거.
+- 상환: `@mount/lib/error-reporting` wrapper 도입 후 `log.info/warn/error/debug` 모두 `addBreadcrumb` / `captureError` 호출. console 은 dev 환경 보조 출력만 유지 (prod 빌드에서도 정보 보존). PII scrubber(전화·이메일 정규식) 가 모든 Sentry event 에 적용. DSN 미설정 시 silent noop.
 
 ### ~~TD-002~~ · Tailwind 미통합 — **상환 완료 (2026-04-25)**
 - 위치: `packages/config/{tokens.css,tailwind.preset.ts}` · `apps/{driver,admin}/{tailwind.config.ts,postcss.config.mjs,app/globals.css}`

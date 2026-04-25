@@ -9,11 +9,21 @@
     ".": "./src/index.ts",
     "./logger": "./src/logger.ts",
     "./feature-flag": "./src/feature-flag.ts",
-    "./format": "./src/format.ts"
+    "./format": "./src/format.ts",
+    "./error-reporting": "./src/error-reporting/index.ts",
+    "./analytics": "./src/analytics/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src"
+  },
+  "dependencies": {
+    "@sentry/nextjs": "^9.0.0",
+    "posthog-js": "^1.205.0"
+  },
+  "peerDependencies": {
+    "next": "^16.0.0",
+    "react": "^19.0.0"
   },
   "devDependencies": {
     "eslint": "^9.18.0",
