@@ -1,6 +1,6 @@
 import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Separator } from '@mount/ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import { ChevronLeft, MapPin, Phone, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
@@ -34,8 +34,6 @@ const OPTION_LABEL: Record<string, string> = {
   C_no_drill: '벽걸이 (무타공)',
 };
 
-const KRW_FORMATTER = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' });
-
 export default async function OrderDetailPage(props: {
   params: Promise<{ orderId: string }>;
 }): Promise<ReactElement> {
@@ -53,8 +51,16 @@ export default async function OrderDetailPage(props: {
 
   const client = await getServerClient();
 
+  // PERMISSIONS §5.6 — 기사는 결제 정보(price_*) 조회 금지.
+  // 표시 필요한 필드만 명시적 select.
   const [orderResult, customerResult] = await Promise.all([
-    client.from('orders').select('*').eq('id', orderId).maybeSingle(),
+    client
+      .from('orders')
+      .select(
+        'id, status, scheduled_installation_at, tv_brand, tv_model, tv_size_inch, option_selected, conversion_from_no_drill',
+      )
+      .eq('id', orderId)
+      .maybeSingle(),
     client.from('v_customer_for_technician').select('*').eq('id', orderId).maybeSingle(),
   ]);
 
@@ -71,9 +77,6 @@ export default async function OrderDetailPage(props: {
     : '시간 미정';
   const tvDisplay = `${order.tv_brand ?? ''} ${order.tv_model ?? ''} ${order.tv_size_inch ? `(${order.tv_size_inch}")` : ''}`.trim();
   const optionLabel = OPTION_LABEL[order.option_selected] ?? order.option_selected;
-  const priceB = order.price_option_b ? Number(order.price_option_b) : 0;
-  const priceC = order.price_option_c ? Number(order.price_option_c) : 0;
-  const conversionDiff = priceB - priceC;
 
   return (
     <main className="bg-background safe-top safe-bottom min-h-dvh px-4 py-4">
@@ -129,26 +132,16 @@ export default async function OrderDetailPage(props: {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">옵션 · 가격</CardTitle>
+            <CardTitle className="text-base">시공 옵션</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">선택 옵션</span>
               <span className="font-medium">{optionLabel}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">B 타공</span>
-              <span className="tabular-nums">{KRW_FORMATTER.format(priceB)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">C 무타공</span>
-              <span className="tabular-nums">{KRW_FORMATTER.format(priceC)}</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between font-semibold">
-              <span>전환 시 차액</span>
-              <span className="tabular-nums">{KRW_FORMATTER.format(conversionDiff)}</span>
-            </div>
+            <p className="text-muted-foreground text-xs leading-5">
+              결제 정보는 본사·고객 화면에서만 표시됩니다. 타공 전환 시 차액은 본사가 자동 청구합니다.
+            </p>
           </CardContent>
         </Card>
 
@@ -174,13 +167,11 @@ function ActionButtons({ orderId, status }: { orderId: string; status: string })
     );
   }
   if (status === 'on_site') {
+    // 취소 리포트(/cancel)는 R4 작업. 현재는 시공 시작 버튼만 노출.
     return (
       <div className="grid gap-3">
         <Button asChild className="w-full" size="lg">
           <Link href={`/order/${orderId}/start`}>시공 시작</Link>
-        </Button>
-        <Button asChild className="w-full" size="lg" variant="outline">
-          <Link href={`/order/${orderId}/cancel`}>취소 리포트</Link>
         </Button>
       </div>
     );

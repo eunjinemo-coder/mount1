@@ -1,30 +1,31 @@
 'use client';
 
-export default function OfflinePage(): React.ReactElement {
+import { Button, Card, CardContent } from '@mount/ui';
+import { WifiOff } from 'lucide-react';
+import type { ReactElement } from 'react';
+
+export default function OfflinePage(): ReactElement {
   return (
-    <main className="flex min-h-dvh items-center justify-center px-6 py-10">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {'\uC624\uD504\uB77C\uC778 \uC0C1\uD0DC\uC785\uB2C8\uB2E4'}
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          {
-            '\uB124\uD2B8\uC6CC\uD06C \uC5F0\uACB0\uC744 \uD655\uC778\uD558\uACE0 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694'
-          }
-        </p>
-        <p className="mt-2 text-sm text-slate-500">
-          {
-            '\uC5F0\uACB0\uC774 \uBCF5\uAD6C\uB418\uBA74 \uC544\uB798 \uBC84\uD2BC\uC73C\uB85C \uC0C8\uB85C\uACE0\uCE68\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.'
-          }
-        </p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-blue-600 px-5 text-sm font-medium text-white transition hover:bg-blue-700"
-        >
-          {'\uC0C8\uB85C\uACE0\uCE68'}
-        </button>
-      </div>
+    <main className="bg-background flex min-h-dvh items-center justify-center px-6 py-10">
+      <Card className="w-full max-w-sm">
+        <CardContent className="space-y-4 py-8 text-center">
+          <div className="bg-muted mx-auto flex size-16 items-center justify-center rounded-full">
+            <WifiOff className="text-muted-foreground size-8" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-foreground text-2xl font-semibold">오프라인 상태입니다</h1>
+            <p className="text-muted-foreground text-sm leading-6">
+              네트워크 연결을 확인하고 다시 시도해 주세요
+            </p>
+            <p className="text-muted-foreground text-xs">
+              연결이 복구되면 아래 버튼으로 새로고침할 수 있습니다.
+            </p>
+          </div>
+          <Button onClick={() => window.location.reload()} size="lg" type="button">
+            새로고침
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   );
 }

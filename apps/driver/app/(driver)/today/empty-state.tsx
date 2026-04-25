@@ -14,7 +14,7 @@ export function EmptyState(): ReactElement {
         <p className="text-muted-foreground text-sm">캘린더에서 다른 날짜를 확인해보세요</p>
       </div>
       <Button asChild variant="outline">
-        <Link href="/calendar">캘린더 보기</Link>
+        <Link href="/today">새로고침</Link>
       </Button>
     </div>
   );

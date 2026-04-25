@@ -101,3 +101,17 @@
 - 2026-04-25 · admin-dispatch (Claude) · 좌(미배차)/우(활성 기사) 카드 그리드 + 선택 시 border-primary 하이라이트 + 하단 sticky 확정 버튼. RPC 호출 후 router.refresh().
 - 2026-04-25 · 도구 신규 · `@mount/db` 에 `callRpc<T>(client, name, args)` 헬퍼 추가 · supabase generated types 의 Functions union 이 새 RPC 추가 전 strict 타입체크 차단 회피. 0005 push + db:types regen 시 자동 정상화.
 - 2026-04-25 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 통과. driver 신규 라우트: `/order/[orderId]`, `/start`, `/complete`. admin 신규: `/dispatch`. 0005_rpc.sql 은 dev push 대기.
+
+## 2026-04-25/26 · 1차 중간점검 + Round 1 P0/P1 수정
+
+- 2026-04-25 · 점검 방식 · `/kkirikkiri` 명령으로 4 에이전트(code-reviewer·security-reviewer·general-purpose·e2e-runner) 병렬 dispatch. Lead PM(Claude)이 통합하여 `_REVIEW_REPORTS/MIDPOINT_CHECK_2026-04-25.md` 생성.
+- 2026-04-25 · 점검 결과 · 빌드 GREEN, 코드/보안 WARNING. 6 P0 + 30+ P1 + 21 P2 발견. 와이어프레임 평균 매칭률 ~48%.
+- 2026-04-25 · 자율 권한 위임 · 은진님 지시: 토큰 한도 내 통합 에이전트(Lead PM)가 위임받아 검증→개선→검증 루프 자동 진행. /kkirikkiri /pumasi 활용. 사용자 개별 confirm 생략.
+- 2026-04-26 · P0 fix #1 (코드) · `apps/driver/app/offline/page.tsx` React 타입 import + 한글 직접 작성 (유니코드 이스케이프 제거) + shadcn/ui Card·Button·WifiOff 아이콘으로 디자인 토큰 통일.
+- 2026-04-26 · P0 fix #2 (보안+기획) · driver 화면에서 결제 금액(price_option_b/c) 노출 제거 — PERMISSIONS §5.6 위반 해소. orders 쿼리에서 price_* 필드 제외, complete 폼에서 차액 표시 제거하고 안내 문구만 노출.
+- 2026-04-26 · P0 fix #3 (보안) · `apps/{driver,admin}/middleware.ts` Supabase SSR 세션 가드 구현. createServerClient + cookies adapter + 미로그인 redirect (`?redirect=` 파라미터 보존). env 누락 시 안전 모드(public path 외 redirect). admin IP whitelist 는 Phase 2 이관 결정.
+- 2026-04-26 · P0 fix #4 (DB) · `supabase/migrations/0006_security_fix.sql` 작성 — auditor 권한 분리 5 정책 + read-only 5 정책 / 트리거 search_path 고정 3종 / 뷰 security_invoker 3종 / notifications.idempotency_key NOT NULL.
+- 2026-04-26 · P1 fix · 라우트 dead-end 회피: start-form `/photos` → `/order/[id]` 임시 redirect, empty-state `/calendar` → `/today`, order detail on_site 의 `/cancel` 버튼 비활성화. R4 작업 시 본격 구현.
+- 2026-04-26 · 의존성 · apps/{driver,admin}/package.json 에 `@supabase/ssr@^0.5.2` 명시 추가 (middleware 직접 import 시 transitive 부족 회피).
+- 2026-04-26 · P1 보류 · P1-S2 (관리자 역할 서버 결정) 은 admin_users.username 컬럼 추가 + 서버 lookup 패턴 필요 — R4 후보 18번. 현재는 클라 드롭다운 유지(임시).
+- 2026-04-26 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 통과. 라우트 변동 없음. 0006_security_fix.sql 은 dev push 대기.

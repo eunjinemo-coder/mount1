@@ -7,12 +7,8 @@ import { completeInstallationAction, type CompleteVariant, type ConversionMethod
 
 export interface CompleteFormProps {
   orderId: string;
-  priceB: number;
-  priceC: number;
   status: string;
 }
-
-const KRW_FORMATTER = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' });
 
 export function CompleteForm(props: CompleteFormProps): ReactElement {
   const router = useRouter();
@@ -22,7 +18,6 @@ export function CompleteForm(props: CompleteFormProps): ReactElement {
   const [isPending, startTransition] = useTransition();
 
   const isInProgress = props.status === 'in_progress';
-  const conversionDiff = props.priceB - props.priceC;
 
   return (
     <div className="space-y-4">
@@ -57,11 +52,7 @@ export function CompleteForm(props: CompleteFormProps): ReactElement {
             <div className="flex-1">
               <p className="font-medium">타공 전환 완료</p>
               <p className="text-muted-foreground text-sm">
-                현장 판단으로 타공 시공. 차액{' '}
-                <span className="text-foreground font-semibold tabular-nums">
-                  {KRW_FORMATTER.format(conversionDiff)}
-                </span>{' '}
-                자동 청구.
+                현장 판단으로 타공 시공. 차액은 본사가 고객에게 자동 청구합니다.
               </p>
             </div>
           </label>

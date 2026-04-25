@@ -23,16 +23,14 @@ export default async function CompletePage(props: {
   }
 
   const client = await getServerClient();
+  // PERMISSIONS §5.6 — 기사는 결제 정보(price_*) 조회 금지.
   const { data: order } = await client
     .from('orders')
-    .select('id, status, price_option_b, price_option_c')
+    .select('id, status')
     .eq('id', orderId)
     .maybeSingle();
 
   if (!order) notFound();
-
-  const priceB = order.price_option_b ? Number(order.price_option_b) : 0;
-  const priceC = order.price_option_c ? Number(order.price_option_c) : 0;
 
   return (
     <main className="bg-background safe-top safe-bottom min-h-dvh px-4 py-6">
@@ -44,12 +42,7 @@ export default async function CompletePage(props: {
           <h1 className="mt-2 text-2xl font-bold">시공 완료</h1>
         </header>
 
-        <CompleteForm
-          orderId={order.id}
-          priceB={priceB}
-          priceC={priceC}
-          status={order.status}
-        />
+        <CompleteForm orderId={order.id} status={order.status} />
       </div>
     </main>
   );

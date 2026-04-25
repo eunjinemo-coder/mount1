@@ -38,7 +38,8 @@ export function StartForm(props: StartFormProps): ReactElement {
           startTransition(async () => {
             const result = await startInstallationAction(props.orderId);
             if (result.ok) {
-              router.push(`/order/${props.orderId}/photos`);
+              // photos 라우트는 R4 작업. 우선 주문 상세로 복귀 (in_progress 상태 → '시공 완료' 버튼 노출).
+              router.push(`/order/${props.orderId}`);
             } else if (result.error) {
               setError(result.error);
             }

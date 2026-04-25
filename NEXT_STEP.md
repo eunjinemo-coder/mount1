@@ -43,14 +43,27 @@ pnpm --filter @mount/db db:types:dev      # 새 RPC 타입 generated 에 추가
 
 이후 `callRpc` 헬퍼는 그대로 작동 (string 인자 받기 때문). typecheck 도 자동 통과.
 
-## R4 후보 (다음 라운드)
+## 1차 중간점검 완료 (2026-04-25/26)
+
+- 보고서: `_REVIEW_REPORTS/MIDPOINT_CHECK_2026-04-25.md`
+- 4 에이전트 dispatch (code-reviewer · security-reviewer · general-purpose · e2e-runner)
+- P0 6건 자동 수정 완료 (코드 5건 + DB migration 0006_security_fix.sql)
+- P1 일부 자동 수정 (라우트 dead-end 3건 회피)
+- 와이어프레임 평균 매칭률 ~48% → R4 에서 보완
+
+## R4 후보 (Lead PM 자율 진행)
 
 14. **Driver Photos (A07)** — 6 슬롯 사진 업로드 + Supabase Storage `photos-hot` 버킷 + EXIF 추출
 15. **Driver Cancel (A10)** — 취소 사유 폼 + cancellation_reports insert + 서명 캔버스
 16. **Admin Order List (B03)** — 필터/정렬 가능한 전체 주문 테이블
-17. **Driver Pre-call (A05)** — 30분 전 통화 화면 + RPC `rpc_technician_log_call` (이미 SQL 있음)
+17. **Driver Pre-call (A05)** — 30분 전 통화 화면 + RPC `rpc_technician_log_call`
+18. **관리자 역할 서버 결정** — admin_users.username 컬럼 추가 + 서버에서 role 확정 (P1-S2 보안 보강)
+19. **글로벌 헤더·하단 탭바·사이드바** — 와이어프레임 부합도 향상
 
-R4 전제: 0005_rpc.sql dev 적용 완료, Supabase Storage `photos-hot` 버킷 생성 (대시보드).
+R4 전제 (은진님 액션):
+- `cd D:\MOUNT1 && supabase db push` (0005_rpc.sql + 0006_security_fix.sql 적용)
+- `pnpm --filter @mount/db db:types:dev`
+- Supabase Dashboard → Storage → 버킷 `photos-hot` 생성 (Photos R4 진입 전)
 
 ## 은진님 세션 외 작업
 
