@@ -1,6 +1,7 @@
 'use client';
 
 import type { SignInResult } from '@mount/lib';
+import { toSafeRedirectPath } from '@mount/lib';
 import {
   Button,
   Card,
