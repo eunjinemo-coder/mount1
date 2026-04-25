@@ -27,6 +27,25 @@ const nextConfig: NextConfig = {
             value: 'camera=(self), geolocation=(self), microphone=()',
           },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          {
+            // CSP — P1-S3 (3차 보안 검증) 해소
+            // Supabase · Sentry · PostHog · Kakao Maps 호스트 허용. 'unsafe-inline' 은 Next.js
+            // hydration 데이터 + Tailwind CSS 인라인을 위해 필요 (Phase 2 nonce 기반으로 강화).
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://browser.sentry-cdn.com https://*.kakao.com https://dapi.kakao.com",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.posthog.com",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.ingest.sentry.io https://dapi.kakao.com",
+              "media-src 'self' blob:",
+              "worker-src 'self' blob:",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
         ],
       },
     ];
