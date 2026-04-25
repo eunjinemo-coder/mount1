@@ -11,7 +11,8 @@
     "./feature-flag": "./src/feature-flag.ts",
     "./format": "./src/format.ts",
     "./error-reporting": "./src/error-reporting/index.ts",
-    "./analytics": "./src/analytics/index.ts"
+    "./analytics": "./src/analytics/index.ts",
+    "./navigation": "./src/navigation.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

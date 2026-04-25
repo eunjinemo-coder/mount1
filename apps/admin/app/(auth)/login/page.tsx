@@ -1,4 +1,4 @@
-import { getSession } from '@mount/lib';
+import { getSession, toSafeRedirectPath } from '@mount/lib';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminLoginForm } from './login-form';
@@ -6,11 +6,6 @@ import { AdminLoginForm } from './login-form';
 export const metadata = {
   title: '관리자 로그인',
 };
-
-function toSafeRedirectPath(value?: string): string | undefined {
-  if (!value) return undefined;
-  return value.startsWith('/') && !value.startsWith('//') ? value : undefined;
-}
 
 export default async function AdminLoginPage(props: {
   searchParams: Promise<{ error?: string; redirect?: string }>;

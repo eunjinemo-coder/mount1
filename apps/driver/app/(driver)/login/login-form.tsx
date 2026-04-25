@@ -1,6 +1,7 @@
 'use client';
 
 import type { SignInResult } from '@mount/lib';
+import { toSafeRedirectPath } from '@mount/lib';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mount/ui';
 import { Eye, EyeOff } from 'lucide-react';
 import * as React from 'react';
@@ -13,14 +14,6 @@ export interface LoginFormProps {
 }
 
 const initialState: SignInResult = { ok: false };
-
-function toSafeRedirectPath(value?: string): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  return value.startsWith('/') && !value.startsWith('//') ? value : undefined;
-}
 
 export function LoginForm(props: LoginFormProps): ReactElement {
   const [username, setUsername] = useState('');

@@ -1,4 +1,4 @@
-import { getSession } from '@mount/lib';
+import { getSession, toSafeRedirectPath } from '@mount/lib';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { LoginForm } from './login-form';
@@ -6,14 +6,6 @@ import { LoginForm } from './login-form';
 export const metadata = {
   title: '기사 로그인',
 };
-
-function toSafeRedirectPath(value?: string): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  return value.startsWith('/') && !value.startsWith('//') ? value : undefined;
-}
 
 export default async function LoginPage(props: {
   searchParams: Promise<{ error?: string; redirect?: string }>;
