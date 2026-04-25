@@ -1,18 +1,45 @@
 import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
-import { ChevronLeft, MapPin, Phone, Tv } from 'lucide-react';
+import {
+  AlertTriangle,
+  Camera,
+  ChevronLeft,
+  FileText,
+  MapPin,
+  Phone,
+  PhoneCall,
+  Tv,
+} from 'lucide-react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 
 export const metadata = { title: '주문 상세' };
 
+type Tab = 'overview' | 'photos' | 'issues' | 'calls';
+
+const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
+  { id: 'overview', label: '개요', icon: FileText },
+  { id: 'photos', label: '사진', icon: Camera },
+  { id: 'issues', label: '이슈', icon: AlertTriangle },
+  { id: 'calls', label: '통화', icon: PhoneCall },
+];
+
 const DATETIME_FORMATTER = new Intl.DateTimeFormat('ko-KR', {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
   weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'Asia/Seoul',
+});
+
+const SHORT_DATETIME = new Intl.DateTimeFormat('ko-KR', {
+  month: 'short',
+  day: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
@@ -34,10 +61,31 @@ const OPTION_LABEL: Record<string, string> = {
   C_no_drill: '벽걸이 (무타공)',
 };
 
+const CALL_OUTCOME_LABEL: Record<string, string> = {
+  answered: '통화 완료',
+  no_answer: '부재중',
+  busy: '통화 중',
+  unreachable: '연결 안됨',
+  manual_marked_done: '수동 완료',
+  customer_postponed: '고객 연기',
+  customer_cancelled: '고객 취소',
+};
+
+const ISSUE_CATEGORY_LABEL: Record<string, string> = {
+  no_drill_impossible: '무타공 불가',
+  customer_absent: '고객 부재',
+  address_inaccessible: '접근 불가',
+  tv_model_mismatch: 'TV 불일치',
+  wall_damage_found: '벽면 손상',
+  etc: '기타',
+};
+
 export default async function OrderDetailPage(props: {
   params: Promise<{ orderId: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }): Promise<ReactElement> {
-  const { orderId } = await props.params;
+  const [{ orderId }, { tab: tabParam }] = await Promise.all([props.params, props.searchParams]);
+  const activeTab: Tab = (TABS.find((t) => t.id === tabParam)?.id ?? 'overview') as Tab;
 
   try {
     await requireRole(['technician']);
@@ -51,10 +99,6 @@ export default async function OrderDetailPage(props: {
 
   const client = await getServerClient();
 
-  // PERMISSIONS §5.6 — 기사는 결제 정보(price_*) 조회 금지.
-  // 표시 필요한 필드만 명시적 select.
-  // P1-NEW-3 fix: v_customer_for_technician.id = customers.id, orders.id 가 아님.
-  // orders 먼저 조회 → customer_id 추출 → 뷰 조회 (sequential).
   const orderResult = await client
     .from('orders')
     .select(
@@ -66,7 +110,7 @@ export default async function OrderDetailPage(props: {
   const order = orderResult.data;
   if (!order) notFound();
 
-  const [customerResult, photosResult, callLogsResult] = await Promise.all([
+  const [customerResult, photosResult, callLogsResult, issuesResult] = await Promise.all([
     order.customer_id
       ? client
           .from('v_customer_for_technician')
@@ -74,18 +118,25 @@ export default async function OrderDetailPage(props: {
           .eq('id', order.customer_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    client.from('photos').select('slot').eq('order_id', orderId),
+    client.from('photos').select('slot, uploaded_at').eq('order_id', orderId),
     client
       .from('call_logs')
-      .select('id, type, called_at, call_outcome')
+      .select('id, type, called_at, call_outcome, call_duration_seconds')
       .eq('order_id', orderId)
       .order('called_at', { ascending: false })
-      .limit(5),
+      .limit(20),
+    client
+      .from('issues')
+      .select('id, category, note, reported_at')
+      .eq('order_id', orderId)
+      .order('reported_at', { ascending: false })
+      .limit(10),
   ]);
 
   const customer = customerResult.data;
   const photos = photosResult.data ?? [];
   const callLogs = callLogsResult.data ?? [];
+  const issues = issuesResult.data ?? [];
 
   const preCount = photos.filter((p) => ['pre_tv_screen', 'pre_wall'].includes(p.slot)).length;
   const postCount = photos.filter((p) =>
@@ -121,85 +172,223 @@ export default async function OrderDetailPage(props: {
 
         <h1 className="text-2xl font-bold">주문 상세</h1>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">예약 시각</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-semibold">{scheduled}</p>
-          </CardContent>
-        </Card>
+        <nav className="bg-muted flex gap-1 rounded-md p-1">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            const count =
+              tab.id === 'photos'
+                ? photos.length
+                : tab.id === 'issues'
+                  ? issues.length
+                  : tab.id === 'calls'
+                    ? callLogs.length
+                    : 0;
+            return (
+              <Button
+                asChild
+                className="flex-1"
+                key={tab.id}
+                size="sm"
+                variant={isActive ? 'default' : 'ghost'}
+              >
+                <Link
+                  href={tab.id === 'overview' ? `/order/${orderId}` : `/order/${orderId}?tab=${tab.id}`}
+                >
+                  <Icon className="size-4" />
+                  {tab.label}
+                  {count > 0 ? (
+                    <span className="bg-background/80 text-foreground rounded-full px-1.5 text-xs">
+                      {count}
+                    </span>
+                  ) : null}
+                </Link>
+              </Button>
+            );
+          })}
+        </nav>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <MapPin className="size-4" />
-              고객
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-base">{region || '주소 정보 없음'}</p>
-            <p className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Phone className="size-4" />
-              ***-****-{phoneTail4 || '????'}
-            </p>
-          </CardContent>
-        </Card>
+        {activeTab === 'overview' ? (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">예약 시각</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold">{scheduled}</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Tv className="size-4" />
-              TV
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-base">{tvDisplay || 'TV 정보 없음'}</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MapPin className="size-4" />
+                  고객
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-base">{region || '주소 정보 없음'}</p>
+                <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <Phone className="size-4" />
+                  ***-****-{phoneTail4 || '????'}
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">진행 현황</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">사전 통화</span>
-              <span className={preCallDone ? 'text-success font-medium' : 'text-destructive'}>
-                {preCallDone ? '✓ 완료' : '미완료'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">시공 전 사진 (필수 2장)</span>
-              <span className={preCount >= 2 ? 'text-success font-medium' : 'text-destructive'}>
-                {preCount}/2
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">완료 사진 (필수 3장)</span>
-              <span className={postCount >= 3 ? 'text-success font-medium' : 'text-muted-foreground'}>
-                {postCount}/3
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Tv className="size-4" />
+                  TV
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-base">{tvDisplay || 'TV 정보 없음'}</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">시공 옵션</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">선택 옵션</span>
-              <span className="font-medium">{optionLabel}</span>
-            </div>
-            <p className="text-muted-foreground text-xs leading-5">
-              결제 정보는 본사·고객 화면에서만 표시됩니다. 타공 전환 시 차액은 본사가 자동 청구합니다.
-            </p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">진행 현황</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">사전 통화</span>
+                  <span className={preCallDone ? 'text-success font-medium' : 'text-destructive'}>
+                    {preCallDone ? '✓ 완료' : '미완료'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">시공 전 사진 (필수 2장)</span>
+                  <span className={preCount >= 2 ? 'text-success font-medium' : 'text-destructive'}>
+                    {preCount}/2
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">완료 사진 (필수 3장)</span>
+                  <span
+                    className={postCount >= 3 ? 'text-success font-medium' : 'text-muted-foreground'}
+                  >
+                    {postCount}/3
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
 
-        <ActionButtons orderId={order.id} status={order.status} />
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">시공 옵션</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">선택 옵션</span>
+                  <span className="font-medium">{optionLabel}</span>
+                </div>
+                <p className="text-muted-foreground text-xs leading-5">
+                  결제 정보는 본사·고객 화면에서만 표시됩니다. 타공 전환 시 차액은 본사가 자동 청구합니다.
+                </p>
+              </CardContent>
+            </Card>
+
+            <ActionButtons orderId={order.id} status={order.status} />
+          </>
+        ) : activeTab === 'photos' ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">사진 ({photos.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">시공 전 (필수 2장)</span>
+                <span className={preCount >= 2 ? 'text-success' : 'text-destructive'}>
+                  {preCount}/2
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">완료 (필수 3장)</span>
+                <span className={postCount >= 3 ? 'text-success' : 'text-muted-foreground'}>
+                  {postCount}/3
+                </span>
+              </div>
+              <Button asChild className="w-full" size="lg">
+                <Link href={`/order/${orderId}/photos`}>사진 업로드 화면 열기</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : activeTab === 'issues' ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">이슈 ({issues.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {issues.length === 0 ? (
+                <p className="text-muted-foreground text-sm">이 주문에 보고된 이슈가 없습니다.</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {issues.map((issue) => (
+                    <li className="rounded-md border p-3" key={issue.id}>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">
+                          {ISSUE_CATEGORY_LABEL[issue.category] ?? issue.category}
+                        </Badge>
+                        <span className="text-muted-foreground text-xs">
+                          {issue.reported_at
+                            ? SHORT_DATETIME.format(new Date(issue.reported_at))
+                            : '-'}
+                        </span>
+                      </div>
+                      {issue.note ? (
+                        <p className="text-muted-foreground mt-1 text-xs">{issue.note}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="text-muted-foreground text-xs">
+                * 신규 이슈 신고는 R8 작업에서 추가 예정. 긴급 시 본사 카카오톡 채널.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">통화 기록 ({callLogs.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {callLogs.length === 0 ? (
+                <p className="text-muted-foreground text-sm">통화 기록이 없습니다.</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {callLogs.map((log) => (
+                    <li className="rounded-md border p-3" key={log.id}>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">
+                          {CALL_OUTCOME_LABEL[log.call_outcome ?? ''] ?? log.call_outcome ?? '-'}
+                        </Badge>
+                        <span className="text-muted-foreground text-xs">
+                          {log.called_at
+                            ? SHORT_DATETIME.format(new Date(log.called_at))
+                            : '-'}
+                        </span>
+                      </div>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {log.type === 'pre_arrival_30min'
+                          ? '30분 전'
+                          : log.type === 'post_arrival'
+                            ? '도착 후'
+                            : '수동'}
+                        {log.call_duration_seconds ? ` · ${log.call_duration_seconds}s` : ''}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Button asChild className="w-full" size="lg" variant="outline">
+                <Link href={`/order/${orderId}/pre-call`}>30분 전 통화 기록 추가</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </main>
   );
