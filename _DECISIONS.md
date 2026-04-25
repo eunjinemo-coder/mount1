@@ -89,3 +89,15 @@
 - 2026-04-25 · admin-today (Claude) · `v_orders_dashboard` view 사용. Promise.all 4 쿼리 (오늘 시공·진행·완료·취소). KST→UTC 변환 helper로 today range 계산. 기사별 막대는 div + inline width 만 (차트 lib 없이).
 - 2026-04-25 · 의존성 fix · apps/{driver,admin}/package.json 에 `lucide-react@^0.469.0` 직접 dependency 추가 · 기존엔 @mount/ui 의 transitive 였지만 apps 가 직접 import 하면 명시 필요.
 - 2026-04-25 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 통과. driver 라우트: `/`, `/login`, `/offline`, `/today`, `/api/health`. admin 라우트: `/`, `/login`, `/today`, `/api/health`.
+
+## 2026-04-25 · Phase 0 Day 0.7 R3 시공 워크플로우 (RPC + 4 화면)
+
+- 2026-04-25 · 품앗이 R3 회고 · Codex 3 task 모두 실패 (driver-detail / admin-dispatch / driver-workflow). PowerShell 탐색 반복 + 자체 timeout. R1 5/5 → R2 1/4 → R3 0/3 으로 성공률 하향. Windows + codex.cli 호환 한계 또는 instruction 컨텍스트 과다 추정. R4 부터는 codex 사용 시 단일 task + 시그니처+게이트만 (10줄 이하 instruction) 으로 재시도 또는 Claude 직접.
+- 2026-04-25 · RPC 본문 (Claude) · `0005_rpc.sql` 작성 (343 줄). ERD §6 본문 그대로 + ERD §3 컬럼명 단일 원천 적용 (audit_events.action · notifications.recipient_type 등). 04_PERMISSIONS §6 의 `auth.technician_id()` → `public.technician_id()` 통일 (0002 헬퍼와 일관).
+- 2026-04-25 · RPC 6종 (Claude) · `rpc_technician_start_installation` (사진 2장 검증) · `rpc_technician_complete` (사진 3장 + 무타공/타공 변형) · `rpc_technician_log_call` (call_logs insert) · `rpc_admin_dispatch` (수동 배차 + dispatches 이력 + 알림 큐) · `rpc_technician_depart` · `rpc_technician_arrive` (GPS 좌표 옵션). 모두 SECURITY DEFINER + authenticated 만 grant.
+- 2026-04-25 · driver-detail (Claude) · 4 카드 (시각·고객·TV·옵션·가격) + status 별 액션 버튼 분기. Card·Badge·Separator 사용. v_customer_for_technician 뷰로 PII 노출 최소화.
+- 2026-04-25 · driver-start (Claude) · 시작 전 안내 ol + 큰 액션 버튼 (Server Action). `missing_pre_photos` 에러 시 사용자 친화적 메시지 ("사진 메뉴에서 업로드 후 다시 시도").
+- 2026-04-25 · driver-complete (Claude) · 무타공/타공 전환 라디오 카드 + 차액 자동 표시 (Intl.NumberFormat KRW) + 합의 방법 select (verbal/sms/phone). RPC 에러 매핑.
+- 2026-04-25 · admin-dispatch (Claude) · 좌(미배차)/우(활성 기사) 카드 그리드 + 선택 시 border-primary 하이라이트 + 하단 sticky 확정 버튼. RPC 호출 후 router.refresh().
+- 2026-04-25 · 도구 신규 · `@mount/db` 에 `callRpc<T>(client, name, args)` 헬퍼 추가 · supabase generated types 의 Functions union 이 새 RPC 추가 전 strict 타입체크 차단 회피. 0005 push + db:types regen 시 자동 정상화.
+- 2026-04-25 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 통과. driver 신규 라우트: `/order/[orderId]`, `/start`, `/complete`. admin 신규: `/dispatch`. 0005_rpc.sql 은 dev push 대기.

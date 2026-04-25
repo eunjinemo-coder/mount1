@@ -23,14 +23,34 @@
 
 > 품앗이 R2 결과: 4 task 중 1 task(driver-login) 만 codex 성공, 3 task 는 timeout/탐색 과다로 실패 → Claude 직접 작성 fallback. driver-login 은 codex 산출물 그대로 채택 (109 LOC).
 
-## 다음 라운드 후보 (Round 3 — 시공 워크플로우)
+## R3 완료 (2026-04-25)
 
-9. **Driver Order Detail (A04)** — 주문 상세 + 사전 통화 버튼 + 시작 버튼
-10. **Driver Pre-call + Start (A05+A06)** — 30분 전 통화 기록 + 출발/도착/시작 → RPC `rpc_technician_log_call` · `rpc_technician_start_installation`
-11. **Driver Photos + Complete (A07+A08)** — 사진 업로드 6슬롯 + 서명 + 완료 → RPC `rpc_technician_complete`
-12. **Admin Dispatch (B05)** — 추천 3명 카드 + 배차 확정 RPC + Gini 경고 모달
+9. ~~**Driver Order Detail (A04)**~~ — Claude 직접 ✅ — 시각·고객·TV·옵션 카드 + status 별 액션 버튼
+10. ~~**Driver Start (A06)**~~ — Claude 직접 ✅ — RPC `rpc_technician_start_installation` 호출 + 사진 부족 에러 안내
+11. ~~**Driver Complete (A08)**~~ — Claude 직접 ✅ — 무타공/타공 전환 라디오 + RPC `rpc_technician_complete` + 합의 방법 select
+12. ~~**Admin Dispatch (B05)**~~ — Claude 직접 ✅ — 미배차 + 활성 기사 매칭 카드 + RPC `rpc_admin_dispatch` 호출
+13. ~~**0005_rpc.sql RPC 본문**~~ — Claude 직접 ✅ — start_installation·complete·log_call·admin_dispatch·depart·arrive 6 RPC
 
-R3 전제: RPC 함수 본문 작성 (현재는 `04_PERMISSIONS §6` 스펙만, 실제 SQL 본문 미작성)
+> 품앗이 R3 결과: codex 0/3 성공 → 전부 Claude 직접 (R2 와 동일 fallback). codex worker 의 Windows 호환성 한계 또는 instruction 효율 문제. R4부터 codex 사용 재고려.
+
+## 은진님 액션 — 0005_rpc.sql dev 적용 + types regenerate
+
+```bash
+cd D:\MOUNT1
+supabase db push                          # 0005_rpc.sql dev 에 적용
+pnpm --filter @mount/db db:types:dev      # 새 RPC 타입 generated 에 추가
+```
+
+이후 `callRpc` 헬퍼는 그대로 작동 (string 인자 받기 때문). typecheck 도 자동 통과.
+
+## R4 후보 (다음 라운드)
+
+14. **Driver Photos (A07)** — 6 슬롯 사진 업로드 + Supabase Storage `photos-hot` 버킷 + EXIF 추출
+15. **Driver Cancel (A10)** — 취소 사유 폼 + cancellation_reports insert + 서명 캔버스
+16. **Admin Order List (B03)** — 필터/정렬 가능한 전체 주문 테이블
+17. **Driver Pre-call (A05)** — 30분 전 통화 화면 + RPC `rpc_technician_log_call` (이미 SQL 있음)
+
+R4 전제: 0005_rpc.sql dev 적용 완료, Supabase Storage `photos-hot` 버킷 생성 (대시보드).
 
 ## 은진님 세션 외 작업
 
