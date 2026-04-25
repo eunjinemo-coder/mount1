@@ -16,7 +16,21 @@ const OUTCOME_OPTIONS: { value: CallOutcome; label: string; description: string 
   { value: 'no_answer', label: '부재중', description: '신호는 갔으나 받지 않음.' },
   { value: 'busy', label: '통화 중', description: '다른 통화 중. 잠시 후 재시도.' },
   { value: 'unreachable', label: '연결 안됨', description: '결번 / 전원꺼짐 / 통신 불가.' },
-  { value: 'manual_marked_done', label: '수동 완료', description: '문자·카톡 등 다른 수단으로 안내 완료.' },
+  {
+    value: 'manual_marked_done',
+    label: '수동 완료',
+    description: '문자·카톡 등 다른 수단으로 안내 완료.',
+  },
+  {
+    value: 'customer_postponed',
+    label: '고객 연기 요청',
+    description: '고객이 일정 변경 요청. 본사 카카오톡 채널로 새 일정 보고 필요.',
+  },
+  {
+    value: 'customer_cancelled',
+    label: '고객 취소 요청',
+    description: '고객이 전화로 취소 의사 표현. 저장 후 자동으로 취소 리포트 화면 안내.',
+  },
 ];
 
 export function PreCallForm(props: PreCallFormProps): ReactElement {
@@ -83,7 +97,12 @@ export function PreCallForm(props: PreCallFormProps): ReactElement {
           startTransition(async () => {
             const result = await logPreCallAction({ orderId: props.orderId, outcome });
             if (result.ok) {
-              router.push(`/order/${props.orderId}`);
+              // 고객 취소 요청 → 자동으로 취소 리포트 화면 진입 (와이어 A05 분기)
+              if (outcome === 'customer_cancelled') {
+                router.push(`/order/${props.orderId}/cancel`);
+              } else {
+                router.push(`/order/${props.orderId}`);
+              }
             } else if (result.error) {
               setError(result.error);
             }

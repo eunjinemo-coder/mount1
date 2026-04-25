@@ -9,7 +9,9 @@ export type CallOutcome =
   | 'no_answer'
   | 'busy'
   | 'unreachable'
-  | 'manual_marked_done';
+  | 'manual_marked_done'
+  | 'customer_postponed'
+  | 'customer_cancelled';
 
 export interface LogCallResult {
   ok: boolean;
