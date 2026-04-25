@@ -1,6 +1,8 @@
+import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import { Camera } from 'lucide-react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 
 export const metadata = { title: '사진 업로드' };
@@ -13,6 +15,17 @@ export default async function PhotosPage(props: {
   params: Promise<{ orderId: string }>;
 }): Promise<ReactElement> {
   const { orderId } = await props.params;
+
+  // P0-B: middleware bypass 시 무인증 노출 방지 — Server Component 이중 방어
+  try {
+    await requireRole(['technician']);
+  } catch (error) {
+    if (error instanceof RedirectError) {
+      redirect(`/login?redirect=${encodeURIComponent(`/order/${orderId}/photos`)}`);
+    }
+    if (error instanceof ForbiddenError) redirect('/login?error=forbidden');
+    throw error;
+  }
 
   return (
     <main className="bg-background safe-top safe-bottom min-h-dvh px-4 py-6">

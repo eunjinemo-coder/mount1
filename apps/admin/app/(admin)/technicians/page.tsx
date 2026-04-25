@@ -29,12 +29,16 @@ export default async function TechniciansPage(): Promise<ReactElement> {
   }
 
   const client = await getServerClient();
+  // PII 최소화 — phone 은 마스킹된 뒷자리 4 만 표시 (auditor 도 같이 노출되지 않도록)
   const { data } = await client
     .from('technicians')
     .select('id, login_id, display_name, phone, grade, status, daily_max_jobs, weekend_enabled')
     .order('display_name', { ascending: true });
 
-  const technicians = data ?? [];
+  const technicians = (data ?? []).map((t) => ({
+    ...t,
+    phoneMasked: t.phone ? `***-****-${t.phone.slice(-4)}` : '-',
+  }));
 
   return (
     <AdminShell activeNav="technicians" title="Technicians">
@@ -67,7 +71,7 @@ export default async function TechniciansPage(): Promise<ReactElement> {
                       <tr className="border-b last:border-0" key={t.id}>
                         <td className="py-2 font-medium">{t.display_name}</td>
                         <td className="text-muted-foreground py-2 text-xs">{t.login_id}</td>
-                        <td className="text-muted-foreground py-2">{t.phone}</td>
+                        <td className="text-muted-foreground py-2">{t.phoneMasked}</td>
                         <td className="py-2">
                           <Badge variant="outline">{GRADE_LABEL[t.grade ?? ''] ?? t.grade}</Badge>
                         </td>

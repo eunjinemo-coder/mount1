@@ -31,6 +31,12 @@ export default async function CancelPage(props: {
 
   if (!order) notFound();
 
+  // 취소 리포트는 on_site / in_progress 상태에서만 가능 (현장 도착 후)
+  const CANCELLABLE = ['on_site', 'in_progress'] as const;
+  if (!CANCELLABLE.includes(order.status as (typeof CANCELLABLE)[number])) {
+    redirect(`/order/${orderId}`);
+  }
+
   return (
     <main className="bg-background safe-top safe-bottom min-h-dvh px-4 py-6">
       <div className="mx-auto max-w-screen-md space-y-6">

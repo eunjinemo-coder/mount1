@@ -25,18 +25,28 @@ export default async function PreCallPage(props: {
   const client = await getServerClient();
   const { data: order } = await client
     .from('orders')
-    .select('id, status, scheduled_installation_at')
+    .select('id, status, scheduled_installation_at, customer_id')
     .eq('id', orderId)
     .maybeSingle();
 
   if (!order) notFound();
 
+  // 30분 전 통화는 assigned/en_route 상태에서만 (현장 도착 전)
+  const CALLABLE = ['assigned', 'en_route'] as const;
+  if (!CALLABLE.includes(order.status as (typeof CALLABLE)[number])) {
+    redirect(`/order/${orderId}`);
+  }
+
   // v_customer_for_technician 으로 전화 뒷자리만 조회 (PII 최소 노출)
-  const { data: customer } = await client
-    .from('v_customer_for_technician')
-    .select('phone_tail4')
-    .eq('id', orderId)
-    .maybeSingle();
+  // P1-NEW-3 fix: 뷰는 customers.id 기반이므로 order.customer_id 로 조회
+  const customerResult = order.customer_id
+    ? await client
+        .from('v_customer_for_technician')
+        .select('phone_tail4')
+        .eq('id', order.customer_id)
+        .maybeSingle()
+    : { data: null };
+  const customer = customerResult.data;
 
   return (
     <main className="bg-background safe-top safe-bottom min-h-dvh px-4 py-6">

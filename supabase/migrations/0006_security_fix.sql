@@ -40,19 +40,24 @@ create policy notifications_admin_all on notifications for all
   using (public.has_admin_role(array['super_admin','cs_admin','dispatch_admin','ops_admin']))
   with check (public.has_admin_role(array['super_admin','cs_admin','dispatch_admin','ops_admin']));
 
--- auditor 는 별도 read-only 정책 (5 테이블)
+-- auditor 는 별도 read-only 정책 (5 테이블) · 멱등성 보장
+drop policy if exists orders_select_auditor on orders;
 create policy orders_select_auditor on orders for select
   using (public.admin_role() = 'auditor');
 
+drop policy if exists photos_select_auditor on photos;
 create policy photos_select_auditor on photos for select
   using (public.admin_role() = 'auditor');
 
+drop policy if exists issues_select_auditor on issues;
 create policy issues_select_auditor on issues for select
   using (public.admin_role() = 'auditor');
 
+drop policy if exists install_select_auditor on installations;
 create policy install_select_auditor on installations for select
   using (public.admin_role() = 'auditor');
 
+drop policy if exists notifications_select_auditor on notifications;
 create policy notifications_select_auditor on notifications for select
   using (public.admin_role() = 'auditor');
 

@@ -179,14 +179,15 @@ begin
 
   -- 후속: 결제링크 발송 큐 등록 (드릴 전환은 차액만, 무타공은 무액)
   if p_variant = 'drill_converted' then
-    insert into notifications (order_id, recipient_type, channel, template_id, payload, status)
+    insert into notifications (order_id, recipient_type, channel, template_id, payload, status, idempotency_key)
     values (
       p_order_id,
       'customer',
       'sms',
       'PAYMENT_LINK_CONVERSION',
       jsonb_build_object('amount', v_diff, 'order_id', p_order_id),
-      'queued'
+      'queued',
+      'PAYMENT_LINK_CONVERSION_' || p_order_id::text
     );
   end if;
 
@@ -337,7 +338,7 @@ begin
   );
 
   -- 알림 (기사에게)
-  insert into notifications (order_id, recipient_type, recipient_id, channel, template_id, payload, status)
+  insert into notifications (order_id, recipient_type, recipient_id, channel, template_id, payload, status, idempotency_key)
   values (
     p_order_id,
     'technician',
@@ -345,7 +346,8 @@ begin
     'push',
     'DISPATCH_ASSIGNED',
     jsonb_build_object('order_id', p_order_id),
-    'queued'
+    'queued',
+    'DISPATCH_ASSIGNED_' || p_order_id::text || '_' || p_technician_id::text
   );
 
   return jsonb_build_object('ok', true, 'assigned_technician_id', p_technician_id);

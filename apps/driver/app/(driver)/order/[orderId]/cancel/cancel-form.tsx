@@ -86,7 +86,12 @@ export function CancelForm(props: CancelFormProps): ReactElement {
             placeholder="예: 거실 벽이 콘크리트 + 단열재 90mm. 무타공 마운트 안전 부착 어려움. 고객에게 타공 전환 안내했으나 임차인이라 거부."
             value={note}
           />
-          <p className="text-muted-foreground mt-1 text-xs">{note.length} / 200자</p>
+          <div className="text-muted-foreground mt-1 flex justify-between text-xs">
+            <span className={note.trim().length < 10 ? 'text-destructive' : ''}>
+              {note.trim().length < 10 ? `${10 - note.trim().length}자 더 필요` : '충분합니다'}
+            </span>
+            <span>{note.length} / 200자</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -115,7 +120,7 @@ export function CancelForm(props: CancelFormProps): ReactElement {
 
       <Button
         className="w-full"
-        disabled={isPending}
+        disabled={isPending || note.trim().length < 10}
         onClick={() => {
           setError(null);
           startTransition(async () => {

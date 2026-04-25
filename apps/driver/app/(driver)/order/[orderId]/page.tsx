@@ -53,19 +53,26 @@ export default async function OrderDetailPage(props: {
 
   // PERMISSIONS §5.6 — 기사는 결제 정보(price_*) 조회 금지.
   // 표시 필요한 필드만 명시적 select.
-  const [orderResult, customerResult] = await Promise.all([
-    client
-      .from('orders')
-      .select(
-        'id, status, scheduled_installation_at, tv_brand, tv_model, tv_size_inch, option_selected, conversion_from_no_drill',
-      )
-      .eq('id', orderId)
-      .maybeSingle(),
-    client.from('v_customer_for_technician').select('*').eq('id', orderId).maybeSingle(),
-  ]);
+  // P1-NEW-3 fix: v_customer_for_technician.id = customers.id, orders.id 가 아님.
+  // orders 먼저 조회 → customer_id 추출 → 뷰 조회 (sequential).
+  const orderResult = await client
+    .from('orders')
+    .select(
+      'id, status, scheduled_installation_at, tv_brand, tv_model, tv_size_inch, option_selected, conversion_from_no_drill, customer_id',
+    )
+    .eq('id', orderId)
+    .maybeSingle();
 
   const order = orderResult.data;
   if (!order) notFound();
+
+  const customerResult = order.customer_id
+    ? await client
+        .from('v_customer_for_technician')
+        .select('*')
+        .eq('id', order.customer_id)
+        .maybeSingle()
+    : { data: null };
 
   const customer = customerResult.data;
   const region = [customer?.address_region_sido, customer?.address_region_sigungu]
