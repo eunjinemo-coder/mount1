@@ -1,13 +1,39 @@
+import { getSession } from '@mount/lib';
+import { redirect } from 'next/navigation';
+import type { ReactElement } from 'react';
+import { LoginForm } from './login-form';
+
 export const metadata = {
   title: '기사 로그인',
 };
 
-export default function DriverLoginPage() {
+function toSafeRedirectPath(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return value.startsWith('/') && !value.startsWith('//') ? value : undefined;
+}
+
+export default async function LoginPage(props: {
+  searchParams: Promise<{ error?: string; redirect?: string }>;
+}): Promise<ReactElement> {
+  const [{ error, redirect: redirectParam }, session] = await Promise.all([
+    props.searchParams,
+    getSession(),
+  ]);
+  const safeRedirect = toSafeRedirectPath(redirectParam);
+
+  if (session?.userType === 'technician') {
+    redirect(safeRedirect ?? '/');
+  }
+
   return (
-    <main style={{ padding: '2rem', maxWidth: 400, margin: '0 auto' }}>
-      <h1>기사 로그인</h1>
-      <p>마운트파트너스 — 협력기사 전용</p>
-      {/* A-1 로그인 폼 자리 · 03_WIREFRAMES/A01_driver_login.md 참조 */}
+    <main className="bg-background min-h-dvh px-4">
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center py-10">
+        <h1 className="mb-6 text-2xl font-bold">마운트파트너스 기사앱</h1>
+        <LoginForm error={error} redirect={safeRedirect} />
+      </div>
     </main>
   );
 }

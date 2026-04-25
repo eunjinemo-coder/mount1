@@ -14,14 +14,23 @@
 3. ~~**Sentry + PostHog 초기 연결**~~ — **완료 (2026-04-25)** · `@sentry/nextjs` 9.47.1 + `posthog-js` 1.205+. wrapper 패턴 (`@mount/lib/error-reporting`, `@mount/lib/analytics`). PII scrubber (한국 휴대폰·이메일 정규식). instrumentation-client.ts + instrumentation.ts (Next.js 16 신규 패턴). DSN/KEY noop 가드 — 가입 전에도 빌드 통과. `logger.ts` 가 자동으로 Sentry breadcrumb/exception 전송 → `TD-001` 상환. typecheck 5/5 · lint 5/5 · build 2/2 통과.
 4. ~~**품앗이 R1 Foundation 5종 외주**~~ — **완료 (2026-04-25)** · Codex 5 병렬: `@mount/db` Supabase 클라이언트 3종 · `@mount/lib/auth` 인증 helpers 5파일 · `@mount/ui` shadcn 컴포넌트 7종 · `@mount/types` Zod 스키마 5종(신규 패키지) · driver PWA Service Worker (`@serwist/next`). typecheck 6/6 · lint 6/6 · build 2/2 통과 (driver `/offline` 라우트 정상). `TD-007` 동시 상환.
 
-## 다음 라운드 후보 (Round 2 — 화면 구현)
+## R2 완료 (2026-04-25)
 
-5. **Driver login (A01)** — `apps/driver/app/(driver)/login/page.tsx` + Server Action (`signInWithUsername`) + 폼 검증 + 에러 toast
-6. **Admin login (B01)** — `apps/admin/app/(auth)/login/page.tsx` + IP whitelist 체크 + 5회 실패 잠금 UX
-7. **Driver Today (A02 리스트 탭)** — `v_technician_today` 뷰 조회 + 카드 리스트 + 30분 전 통화 배지
-8. **Admin Today (B02)** — KPI 카드 4종 + 최근 30일 바 차트(skeleton) + 미배차 카운트
+5. ~~**Driver login (A01)**~~ — Codex 외주 ✅ — page/actions/login-form 3 파일, useActionState + h-12 큰 터치 영역
+6. ~~**Admin login (B01)**~~ — Claude 직접 ✅ — 5역할 select(한글 라벨) + 잠금 안내 메시지
+7. ~~**Driver Today (A02 리스트)**~~ — Claude 직접 ✅ — `v_technician_today` 조회, OrderCard + Empty, 통화 필요 Badge, ChevronRight
+8. ~~**Admin Today (B02)**~~ — Claude 직접 ✅ — 4 KPI 카드 + 미배차 배너 + 기사별 막대 (Promise.all 4 쿼리, KST→UTC 변환)
 
-R2 진행 전 은진님 Sentry/PostHog 가입 + .env.local 입력 확인 필요.
+> 품앗이 R2 결과: 4 task 중 1 task(driver-login) 만 codex 성공, 3 task 는 timeout/탐색 과다로 실패 → Claude 직접 작성 fallback. driver-login 은 codex 산출물 그대로 채택 (109 LOC).
+
+## 다음 라운드 후보 (Round 3 — 시공 워크플로우)
+
+9. **Driver Order Detail (A04)** — 주문 상세 + 사전 통화 버튼 + 시작 버튼
+10. **Driver Pre-call + Start (A05+A06)** — 30분 전 통화 기록 + 출발/도착/시작 → RPC `rpc_technician_log_call` · `rpc_technician_start_installation`
+11. **Driver Photos + Complete (A07+A08)** — 사진 업로드 6슬롯 + 서명 + 완료 → RPC `rpc_technician_complete`
+12. **Admin Dispatch (B05)** — 추천 3명 카드 + 배차 확정 RPC + Gini 경고 모달
+
+R3 전제: RPC 함수 본문 작성 (현재는 `04_PERMISSIONS §6` 스펙만, 실제 SQL 본문 미작성)
 
 ## 은진님 세션 외 작업
 

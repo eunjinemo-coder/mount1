@@ -1,585 +1,400 @@
 pumasi:
   defaults:
-    # Windows: .cmd shim 은 spawn EINVAL 발생 → node 로 직접 ESM entry 실행
     command: "node C:/Windows/nvm/v22.15.1/node_modules/@openai/codex/bin/codex.js exec --dangerously-bypass-approvals-and-sandbox"
     emoji: "🤖"
 
   tasks:
     # ────────────────────────────────────────────────────────────
-    # Task 1 · @mount/db Supabase 클라이언트 3종
+    # Task 1 · Driver Login (A01) — 기사앱 발급 ID/PW 로그인
     # ────────────────────────────────────────────────────────────
-    - name: db-clients
+    - name: driver-login
       instruction: |
-        D:/MOUNT1/packages/db/ 에 Supabase 클라이언트 3종을 구현하세요.
+        D:/MOUNT1/apps/driver/app/(driver)/login/ 에 기사앱 로그인 화면 구현.
 
         ## 컨텍스트
-        - pnpm workspace monorepo · TypeScript 5.7 strict + noUncheckedIndexedAccess
-        - Next.js 16.2.4 App Router · React 19
-        - Supabase 신 API 키 형식(sb_publishable_*, sb_secret_*)
-        - Database 타입은 './types.generated' 에서 import (이미 placeholder 존재)
+        - Next.js 16 App Router · React 19 · Server Component + Server Action
+        - 발급형 ID/PW 인증 (이메일 형식 가짜 — `technician_{username}@internal.mountpartners.cloud`)
+        - 기존 `@mount/lib/auth` 의 `signInWithUsername({ username, password, userType: 'technician' })` 사용
+        - 기존 `@mount/ui` 의 Button · Input · Card 사용 (이미 export 됨)
+        - 기존 `@mount/lib/auth` 의 `getSession` 사용 — 이미 로그인된 경우 redirect
+        - PWA 모바일 우선 — 큰 터치 영역, 50~60대 기사 가독성
 
         ## 생성/수정 파일
-        - D:/MOUNT1/packages/db/src/client.ts (신규) — 브라우저 singleton
-        - D:/MOUNT1/packages/db/src/server.ts (신규) — Server Component / Server Action
-        - D:/MOUNT1/packages/db/src/admin.ts  (신규) — service role · server only
-        - D:/MOUNT1/packages/db/src/index.ts  (수정) — client/server 만 re-export (admin 제외)
-        - D:/MOUNT1/packages/db/package.json  (수정) — 의존성 추가
-
-        ## 시그니처 (정확히 이대로)
-
-        client.ts:
-          import type { Database } from './types.generated';
-          import type { SupabaseClient } from '@supabase/supabase-js';
-          export function getBrowserClient(): SupabaseClient<Database>
-
-        server.ts:
-          import type { Database } from './types.generated';
-          import type { SupabaseClient } from '@supabase/supabase-js';
-          export function getServerClient(): Promise<SupabaseClient<Database>>
-
-        admin.ts:
-          import 'server-only';
-          import type { Database } from './types.generated';
-          import type { SupabaseClient } from '@supabase/supabase-js';
-          export function getAdminClient(): SupabaseClient<Database>
-
-        ## 요구사항
-        - 라이브러리: @supabase/ssr@^0.5.2 (createBrowserClient·createServerClient) + @supabase/supabase-js@^2.45.0 (createClient)
-        - 환경변수: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY (두 client 용) · SUPABASE_SERVICE_ROLE_KEY (admin 만)
-        - 환경변수 누락 시 throw new Error('NEXT_PUBLIC_SUPABASE_URL is required') 형식 명시 에러
-        - client.ts: 모듈 최상단 let 변수로 singleton 캐시 (한 번 생성 후 재사용)
-        - server.ts: next/headers 의 cookies() 활용. createServerClient<Database>(url, key, { cookies: { getAll, setAll } })
-          · getAll → cookieStore.getAll() · setAll → for (const c of cookies) try { cookieStore.set(c.name, c.value, c.options); } catch { /* Server Component 무시 */ }
-        - admin.ts: createClient<Database>(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
-          · 'server-only' 첫 줄 import 필수
-        - index.ts: 기존 `export type { Database } from './types.generated';` 유지 + getBrowserClient, getServerClient 만 추가 export. admin 은 절대 re-export 금지.
-
-        ## package.json 변경 (dependencies 에 추가)
-        - "@supabase/ssr": "^0.5.2"
-        - "@supabase/supabase-js": "^2.45.0"
-        기존 devDependencies 변경 금지.
-
-        ## 금지
-        - 함수 시그니처 변경 금지
-        - createBrowserClient·createServerClient·createClient 외 다른 SDK 함수 사용 금지
-        - any 캐스트, @ts-ignore, eslint-disable 사용 금지
-        - 코드 주석은 한국어 한 줄만 (왜 이렇게 했는지)
-
-        ## 완료 보고
-        - 생성 파일 경로 + 각 함수 한 줄 요약
-        - cookies adapter 의 setAll try/catch 처리 위치
-
-      gates:
-        - name: "파일 4종 존재"
-          command: "test -f D:/MOUNT1/packages/db/src/client.ts && test -f D:/MOUNT1/packages/db/src/server.ts && test -f D:/MOUNT1/packages/db/src/admin.ts && test -f D:/MOUNT1/packages/db/src/index.ts"
-        - name: "@supabase/ssr 의존성"
-          command: "grep -q '@supabase/ssr' D:/MOUNT1/packages/db/package.json"
-        - name: "@supabase/supabase-js 의존성"
-          command: "grep -q '@supabase/supabase-js' D:/MOUNT1/packages/db/package.json"
-        - name: "client.ts createBrowserClient"
-          command: "grep -q 'createBrowserClient' D:/MOUNT1/packages/db/src/client.ts"
-        - name: "server.ts cookies adapter"
-          command: "grep -q 'createServerClient' D:/MOUNT1/packages/db/src/server.ts && grep -q 'next/headers' D:/MOUNT1/packages/db/src/server.ts"
-        - name: "admin.ts server-only"
-          command: "head -3 D:/MOUNT1/packages/db/src/admin.ts | grep -q 'server-only'"
-        - name: "index.ts 에 admin export 없음"
-          command: "! grep -q 'getAdminClient' D:/MOUNT1/packages/db/src/index.ts"
-        - name: "index.ts 에 browser/server export"
-          command: "grep -q 'getBrowserClient' D:/MOUNT1/packages/db/src/index.ts && grep -q 'getServerClient' D:/MOUNT1/packages/db/src/index.ts"
-
-    # ────────────────────────────────────────────────────────────
-    # Task 2 · @mount/lib/auth 인증 helpers
-    # ────────────────────────────────────────────────────────────
-    - name: auth-helpers
-      instruction: |
-        D:/MOUNT1/packages/lib/src/auth/ 디렉토리를 신규 생성하고 인증 helpers 5종 작성.
-
-        ## 컨텍스트
-        - Next.js 16 App Router · TypeScript strict
-        - 발급형 ID/PW (이메일 형식 가짜 — `{role}_{username}@internal.mountpartners.cloud`)
-        - JWT app_metadata claim: user_type('admin'|'technician') · admin_role · technician_id · admin_user_id
-          (이미 0004_hooks.sql 의 custom_access_token_hook 가 주입)
-        - DB 클라이언트는 @mount/db 의 getBrowserClient() / getServerClient() 사용
-
-        ## 생성 파일
-        - D:/MOUNT1/packages/lib/src/auth/sign-in.ts
-        - D:/MOUNT1/packages/lib/src/auth/sign-out.ts
-        - D:/MOUNT1/packages/lib/src/auth/session.ts
-        - D:/MOUNT1/packages/lib/src/auth/require-role.ts
-        - D:/MOUNT1/packages/lib/src/auth/index.ts
-
-        ## 수정 파일
-        - D:/MOUNT1/packages/lib/src/index.ts — auth 모듈 re-export 추가
-        - D:/MOUNT1/packages/lib/package.json — dependencies 에 @mount/db: "workspace:*" 추가
+        - D:/MOUNT1/apps/driver/app/(driver)/login/page.tsx (신규 또는 기존 덮어쓰기)
+        - D:/MOUNT1/apps/driver/app/(driver)/login/actions.ts (신규) — Server Action
+        - D:/MOUNT1/apps/driver/app/(driver)/login/login-form.tsx (신규) — Client Component (form)
 
         ## 시그니처
 
-        sign-in.ts (Server Action 에서 호출):
-          export type AdminRole = 'super_admin' | 'cs_admin' | 'dispatch_admin' | 'ops_admin' | 'auditor';
-          export type UserType = 'admin' | 'technician';
+        page.tsx (Server Component):
+          import type { ReactElement } from 'react';
+          export default async function LoginPage(props: {
+            searchParams: Promise<{ error?: string; redirect?: string }>;
+          }): Promise<ReactElement>
 
-          export interface SignInResult {
-            ok: boolean;
-            error?: string;
-            redirect?: string;
-          }
+        actions.ts (Server Action):
+          'use server';
+          import type { SignInResult } from '@mount/lib';
+          export async function loginAction(formData: FormData): Promise<SignInResult>
 
-          /** 발급형 ID 로그인 — username 을 fake email 로 변환 후 supabase.auth.signInWithPassword */
-          export async function signInWithUsername(args: {
-            username: string;
-            password: string;
-            userType: UserType;
-            adminRoleHint?: AdminRole;
-          }): Promise<SignInResult>
-
-        sign-out.ts:
-          export async function signOut(): Promise<void>
-
-        session.ts (Server Component 에서 호출):
-          export interface AppSession {
-            userId: string;
-            userType: UserType | null;
-            adminRole: AdminRole | null;
-            technicianId: string | null;
-            adminUserId: string | null;
-          }
-
-          /** 현재 세션 조회. 미로그인 시 null */
-          export async function getSession(): Promise<AppSession | null>
-
-        require-role.ts (Server Component / middleware 외부 helper):
-          export async function requireRole(
-            allowed: UserType[] | { adminRoles: AdminRole[] }
-          ): Promise<AppSession>
-
-          /** 통과 시 AppSession 반환. 미로그인 → throw RedirectError('/login'). 권한 부족 → throw ForbiddenError */
-
-        index.ts:
-          - 위 모든 type · function re-export
+        login-form.tsx (Client Component):
+          'use client';
+          import type { ReactElement } from 'react';
+          export interface LoginFormProps { error?: string; redirect?: string }
+          export function LoginForm(props: LoginFormProps): ReactElement
 
         ## 요구사항
-        - sign-in.ts:
-          · userType==='admin' 일 땐 fake email = `${adminRoleHint}_${username}@internal.mountpartners.cloud` (adminRoleHint 없으면 'cs_admin' 기본)
-          · userType==='technician' 일 땐 fake email = `technician_${username}@internal.mountpartners.cloud`
-          · @mount/db 의 getServerClient() 사용
-          · Supabase 에러 → SignInResult { ok: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' } (실제 에러 메시지 노출 금지)
-          · 성공 시 { ok: true, redirect: userType==='admin' ? '/admin' : '/' }
-        - sign-out.ts:
-          · getServerClient().auth.signOut() 호출. throw 안 함 (silent)
-        - session.ts:
-          · getServerClient().auth.getUser() 결과의 user.app_metadata 에서 user_type / admin_role / technician_id / admin_user_id 추출
-          · user 없으면 null 반환
-        - require-role.ts:
-          · 자체 RedirectError·ForbiddenError 클래스 정의 (export class RedirectError extends Error { constructor(public to: string) ... })
-          · 통과 조건: getSession() 결과가 null 이 아니고 (allowed 가 array 면) userType in allowed, ({adminRoles}) 면 adminRole in adminRoles
-          · 실패 시 throw 위 두 에러 중 적합한 것
 
-        ## 의존성 (lib/package.json dependencies)
-        - "@mount/db": "workspace:*" 추가
+        page.tsx:
+        - searchParams 의 error · redirect 추출
+        - getSession() 호출 → 이미 로그인된 technician 이면 redirect('/') 또는 redirect param 으로
+        - LoginForm 에 error/redirect prop 전달
+        - 컨테이너: min-h-dvh · flex · items-center · justify-center · bg-background · px-4
+        - 좌상단 노출 텍스트: "마운트파트너스 기사앱" h1 (text-2xl font-bold)
 
-        ## 금지
-        - import 'server-only' 사용 금지 (auth helpers 는 Server Action / Server Component 양쪽에서 호출)
-        - try/catch 로 silent 실패 금지 (signOut 만 예외)
-        - any 캐스트 금지
+        actions.ts:
+        - formData 에서 username · password 추출 (string 변환)
+        - 둘 중 하나라도 비어있으면 { ok: false, error: '아이디와 비밀번호를 입력해 주세요.' }
+        - signInWithUsername({ username, password, userType: 'technician' }) 호출
+        - 결과 그대로 return (이미 SignInResult 타입)
+        - try/catch 로 예상 외 에러 → { ok: false, error: '로그인 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.' }
+        - 성공 시 redirect 는 호출자(form)에서 처리 (Server Action 안에서 redirect() 직접 호출하지 말 것 — error boundary 충돌)
 
-      gates:
-        - name: "5 파일 존재"
-          command: "test -f D:/MOUNT1/packages/lib/src/auth/sign-in.ts && test -f D:/MOUNT1/packages/lib/src/auth/sign-out.ts && test -f D:/MOUNT1/packages/lib/src/auth/session.ts && test -f D:/MOUNT1/packages/lib/src/auth/require-role.ts && test -f D:/MOUNT1/packages/lib/src/auth/index.ts"
-        - name: "@mount/db 의존성"
-          command: "grep -q '@mount/db' D:/MOUNT1/packages/lib/package.json"
-        - name: "sign-in fake email 패턴"
-          command: "grep -q 'internal.mountpartners.cloud' D:/MOUNT1/packages/lib/src/auth/sign-in.ts"
-        - name: "session app_metadata 사용"
-          command: "grep -q 'app_metadata' D:/MOUNT1/packages/lib/src/auth/session.ts"
-        - name: "require-role 클래스 정의"
-          command: "grep -q 'RedirectError' D:/MOUNT1/packages/lib/src/auth/require-role.ts && grep -q 'ForbiddenError' D:/MOUNT1/packages/lib/src/auth/require-role.ts"
-        - name: "lib/index.ts re-export"
-          command: "grep -q 'auth' D:/MOUNT1/packages/lib/src/index.ts"
-        - name: "any 사용 없음"
-          command: "! grep -nE ': any\\b|as any\\b' D:/MOUNT1/packages/lib/src/auth/sign-in.ts D:/MOUNT1/packages/lib/src/auth/session.ts D:/MOUNT1/packages/lib/src/auth/require-role.ts"
+        login-form.tsx:
+        - useState · useTransition · React.useActionState 활용 (Next.js 16 표준)
+        - useActionState(loginAction, { ok: false }) — initialState
+        - Card · CardHeader · CardTitle · CardContent 로 감쌈
+        - 두 Input: username (autoComplete='username', inputMode='text', maxLength=32, required)
+                  password (type='password', autoComplete='current-password', required)
+        - 큰 Button (size='lg', w-full) — 기사 모바일 터치
+        - error 표시: state.error || props.error 가 있으면 빨간 배지 (text-destructive · text-sm · mt-2)
+        - 폼 제출 시 isPending 동안 Button disabled · 텍스트 "로그인 중…"
+        - 성공 시 (state.ok === true 그리고 state.redirect): useEffect 로 window.location.href = state.redirect || '/'
+          (Client redirect — Server Action 안 redirect 회피)
 
-    # ────────────────────────────────────────────────────────────
-    # Task 3 · @mount/ui shadcn 컴포넌트 7종
-    # ────────────────────────────────────────────────────────────
-    - name: ui-components
-      instruction: |
-        D:/MOUNT1/packages/ui/src/ 에 shadcn/ui (New York style) 표준 컴포넌트 7종 추가.
-
-        ## 컨텍스트
-        - 기존 button.tsx 가 shadcn New York 표준 cva 패턴으로 작성됨 (참조: D:/MOUNT1/packages/ui/src/button.tsx)
-        - cn 유틸: D:/MOUNT1/packages/ui/src/cn.ts (twMerge + clsx)
-        - Tailwind preset: D:/MOUNT1/packages/config/tailwind.preset.ts (shadcn 토큰 활성)
-        - 색상 컨벤션: bg-primary · text-foreground · border-input · bg-destructive · hsl(var(--*))
-
-        ## 생성 파일 (shadcn New York 정확히 그대로)
-        - D:/MOUNT1/packages/ui/src/input.tsx
-        - D:/MOUNT1/packages/ui/src/card.tsx
-        - D:/MOUNT1/packages/ui/src/badge.tsx
-        - D:/MOUNT1/packages/ui/src/skeleton.tsx
-        - D:/MOUNT1/packages/ui/src/separator.tsx
-        - D:/MOUNT1/packages/ui/src/dialog.tsx
-        - D:/MOUNT1/packages/ui/src/sheet.tsx
-
-        ## 수정 파일
-        - D:/MOUNT1/packages/ui/src/index.ts — 새 컴포넌트 export 추가
-        - D:/MOUNT1/packages/ui/package.json — Radix 의존성 4종 추가
-
-        ## 시그니처 요약 (Codex 가 shadcn New York 공식 소스 그대로 구현)
-
-        input.tsx:
-          export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
-          export const Input: React.ForwardRefExoticComponent<InputProps & React.RefAttributes<HTMLInputElement>>;
-
-        card.tsx (sub-components):
-          export const Card · CardHeader · CardTitle · CardDescription · CardContent · CardFooter
-          (모두 forwardRef + cn merge)
-
-        badge.tsx (cva):
-          export const badgeVariants: ReturnType<typeof cva>;
-          export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
-          export function Badge(props: BadgeProps): JSX.Element;
-          variants: default · secondary · destructive · outline
-
-        skeleton.tsx:
-          export function Skeleton(props: React.HTMLAttributes<HTMLDivElement>): JSX.Element;
-          (기본 클래스: animate-pulse rounded-md bg-muted)
-
-        separator.tsx (Radix Separator):
-          export const Separator: React.ForwardRefExoticComponent<...>;
-          orientation horizontal | vertical · decorative true
-
-        dialog.tsx (Radix Dialog primitive):
-          export const Dialog · DialogTrigger · DialogPortal · DialogOverlay · DialogContent · DialogHeader · DialogFooter · DialogTitle · DialogDescription · DialogClose
-
-        sheet.tsx (Radix Dialog 기반 + side variant):
-          export const Sheet · SheetTrigger · SheetClose · SheetContent · SheetHeader · SheetFooter · SheetTitle · SheetDescription
-          variants(side): top · right · bottom · left (cva)
-
-        ## 요구사항
-        - 모든 컴포넌트는 shadcn/ui 공식 New York 스타일 그대로 (https://ui.shadcn.com/r/styles/new-york-v4)
-        - cn import: import { cn } from './cn';
-        - cva import: import { cva, type VariantProps } from 'class-variance-authority';
-        - lucide 아이콘: dialog/sheet 의 close 버튼은 X 아이콘 (import { X } from 'lucide-react')
-        - JSX.Element 대신 React.ReactElement 또는 implicit return 가능 (Next.js 16 권장)
-        - 'use client' directive: dialog.tsx · sheet.tsx · separator.tsx · input.tsx 첫 줄에 추가
-          (Radix primitive 가 useState/useContext 사용)
-
-        ## index.ts 추가 export 패턴
-          export { Input } from './input';
-          export type { InputProps } from './input';
-          export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './card';
-          export { Badge, badgeVariants } from './badge';
-          export type { BadgeProps } from './badge';
-          export { Skeleton } from './skeleton';
-          export { Separator } from './separator';
-          export { Dialog, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose } from './dialog';
-          export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from './sheet';
-
-        ## package.json dependencies 에 추가
-        - "@radix-ui/react-dialog": "^1.1.4"
-        - "@radix-ui/react-separator": "^1.1.1"
-        (이미 있는 @radix-ui/react-slot · class-variance-authority · clsx · lucide-react · tailwind-merge 는 그대로)
+        ## 라이브러리 사용 (필수 import)
+        - import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@mount/ui';
+        - import { signInWithUsername } from '@mount/lib';
+        - import { getSession } from '@mount/lib';
+        - import { redirect } from 'next/navigation';
 
         ## 금지
-        - shadcn cli 직접 실행 금지 (오프라인 작성)
+        - 외부 폼 라이브러리(react-hook-form 등) 사용 금지
+        - 외부 검증 라이브러리(zod runtime check) 사용 금지 (단순 if 분기로 충분)
         - any · @ts-ignore 사용 금지
-        - 추가 외부 라이브러리 사용 금지 (위 7종 · 기존 의존성만)
+        - localStorage 직접 사용 금지 (Supabase auth 가 자동 처리)
+        - inline style 사용 금지 (Tailwind className 만)
 
       gates:
-        - name: "7 파일 존재"
-          command: "for f in input card badge skeleton separator dialog sheet; do test -f D:/MOUNT1/packages/ui/src/$f.tsx || exit 1; done"
-        - name: "Radix dialog 의존성"
-          command: "grep -q '@radix-ui/react-dialog' D:/MOUNT1/packages/ui/package.json"
-        - name: "Radix separator 의존성"
-          command: "grep -q '@radix-ui/react-separator' D:/MOUNT1/packages/ui/package.json"
-        - name: "dialog use client"
-          command: "head -1 D:/MOUNT1/packages/ui/src/dialog.tsx | grep -q 'use client'"
-        - name: "sheet use client"
-          command: "head -1 D:/MOUNT1/packages/ui/src/sheet.tsx | grep -q 'use client'"
-        - name: "card sub-components"
-          command: "grep -q 'CardHeader' D:/MOUNT1/packages/ui/src/card.tsx && grep -q 'CardContent' D:/MOUNT1/packages/ui/src/card.tsx"
-        - name: "badge cva variants"
-          command: "grep -q 'badgeVariants' D:/MOUNT1/packages/ui/src/badge.tsx && grep -q 'destructive' D:/MOUNT1/packages/ui/src/badge.tsx"
-        - name: "index.ts 에 8 신규 export"
-          command: "grep -q 'Input' D:/MOUNT1/packages/ui/src/index.ts && grep -q 'CardHeader' D:/MOUNT1/packages/ui/src/index.ts && grep -q 'Dialog' D:/MOUNT1/packages/ui/src/index.ts && grep -q 'Sheet' D:/MOUNT1/packages/ui/src/index.ts"
+        - name: "3 파일 존재"
+          command: "test -f 'D:/MOUNT1/apps/driver/app/(driver)/login/page.tsx' && test -f 'D:/MOUNT1/apps/driver/app/(driver)/login/actions.ts' && test -f 'D:/MOUNT1/apps/driver/app/(driver)/login/login-form.tsx'"
+        - name: "Server Action use server"
+          command: "head -3 'D:/MOUNT1/apps/driver/app/(driver)/login/actions.ts' | grep -q 'use server'"
+        - name: "Form use client"
+          command: "head -3 'D:/MOUNT1/apps/driver/app/(driver)/login/login-form.tsx' | grep -q 'use client'"
+        - name: "@mount/ui 사용"
+          command: "grep -q '@mount/ui' 'D:/MOUNT1/apps/driver/app/(driver)/login/login-form.tsx'"
+        - name: "signInWithUsername 호출"
+          command: "grep -q 'signInWithUsername' 'D:/MOUNT1/apps/driver/app/(driver)/login/actions.ts'"
+        - name: "userType technician"
+          command: "grep -q 'technician' 'D:/MOUNT1/apps/driver/app/(driver)/login/actions.ts'"
         - name: "any 사용 없음"
-          command: "! grep -rE ': any\\b|as any\\b' D:/MOUNT1/packages/ui/src/input.tsx D:/MOUNT1/packages/ui/src/card.tsx D:/MOUNT1/packages/ui/src/dialog.tsx D:/MOUNT1/packages/ui/src/sheet.tsx"
+          command: "! grep -nE ': any\\b|as any\\b' 'D:/MOUNT1/apps/driver/app/(driver)/login/page.tsx' 'D:/MOUNT1/apps/driver/app/(driver)/login/actions.ts' 'D:/MOUNT1/apps/driver/app/(driver)/login/login-form.tsx'"
 
     # ────────────────────────────────────────────────────────────
-    # Task 4 · @mount/types Zod 도메인 스키마 (신규 패키지)
+    # Task 2 · Admin Login (B01) — 관리자 발급 ID/PW + 5회 잠금
     # ────────────────────────────────────────────────────────────
-    - name: types-zod
+    - name: admin-login
       instruction: |
-        D:/MOUNT1/packages/types/ 신규 패키지 생성. ERD 기반 도메인 Zod 스키마 5종.
+        D:/MOUNT1/apps/admin/app/(auth)/login/ 에 관리자 로그인 화면 구현.
 
         ## 컨텍스트
-        - pnpm-workspace.yaml 의 packages: ['packages/*'] 가 자동 감지
-        - TypeScript strict + noUncheckedIndexedAccess
-        - ERD 기준: D:/walltvprowiki/13_PROJECT_MANAGEMENT/MOUNTPARTNERS_APP/02_IA/02_ERD.md §3
-        - DB 마이그레이션과 일치 (D:/MOUNT1/supabase/migrations/0001_init.sql)
+        - Next.js 16 App Router · React 19 · Server Component + Server Action
+        - 관리자 fake email 패턴: `{role}_{username}@internal.mountpartners.cloud` (role: super_admin/cs_admin/dispatch_admin/ops_admin/auditor)
+        - admin 은 IP whitelist 추후 미들웨어 검증 (이번 task 범위 외 — IP 체크 stub만)
+        - 5회 실패 잠금은 RPC 차원 (이번 task 는 UI 만 — 잠금 메시지 표시)
+        - 기존 `@mount/lib/auth` 의 `signInWithUsername({ userType: 'admin', adminRoleHint })` 사용
+        - 기존 `@mount/ui` 사용
 
-        ## 생성 파일
-        - D:/MOUNT1/packages/types/package.json
-        - D:/MOUNT1/packages/types/tsconfig.json
-        - D:/MOUNT1/packages/types/eslint.config.mjs
-        - D:/MOUNT1/packages/types/src/index.ts
-        - D:/MOUNT1/packages/types/src/order.ts
-        - D:/MOUNT1/packages/types/src/technician.ts
-        - D:/MOUNT1/packages/types/src/customer.ts
-        - D:/MOUNT1/packages/types/src/photo.ts
-        - D:/MOUNT1/packages/types/src/installation.ts
+        ## 생성/수정 파일
+        - D:/MOUNT1/apps/admin/app/(auth)/login/page.tsx (신규 또는 기존 덮어쓰기)
+        - D:/MOUNT1/apps/admin/app/(auth)/login/actions.ts (신규)
+        - D:/MOUNT1/apps/admin/app/(auth)/login/login-form.tsx (신규)
 
-        ## package.json
-        ```json
-        {
-          "name": "@mount/types",
-          "private": true,
-          "version": "0.0.0",
-          "type": "module",
-          "main": "./src/index.ts",
-          "types": "./src/index.ts",
-          "exports": {
-            ".": "./src/index.ts",
-            "./order": "./src/order.ts",
-            "./technician": "./src/technician.ts",
-            "./customer": "./src/customer.ts",
-            "./photo": "./src/photo.ts",
-            "./installation": "./src/installation.ts"
-          },
-          "scripts": {
-            "typecheck": "tsc --noEmit",
-            "lint": "eslint src"
-          },
-          "dependencies": {
-            "zod": "^3.24.1"
-          },
-          "devDependencies": {
-            "eslint": "^9.18.0",
-            "typescript": "^5.7.3"
-          }
-        }
-        ```
+        ## 시그니처
 
-        ## tsconfig.json
-        - extends: "../../tsconfig.base.json"
-        - include: ["src/**/*"]
+        page.tsx (Server Component):
+          export default async function AdminLoginPage(props: {
+            searchParams: Promise<{ error?: string; redirect?: string }>;
+          }): Promise<ReactElement>
 
-        ## eslint.config.mjs
-        - 다른 패키지의 eslint.config.mjs (예: D:/MOUNT1/packages/lib/eslint.config.mjs) 와 동일한 패턴
-        - import rootConfig from '../../eslint.config.mjs'; export default [...rootConfig];
+        actions.ts (Server Action):
+          'use server';
+          import type { SignInResult, AdminRole } from '@mount/lib';
+          export async function adminLoginAction(formData: FormData): Promise<SignInResult>
 
-        ## 시그니처 (각 파일별)
-
-        order.ts:
-          export const OrderStatusSchema = z.enum([...18 개 ERD §3.4 status 값 정확히]);
-          export type OrderStatus = z.infer<typeof OrderStatusSchema>;
-          export const OrderOptionSchema = z.enum(['A_stand', 'B_drill', 'C_no_drill']);
-          export type OrderOption = z.infer<typeof OrderOptionSchema>;
-          export const OrderSchema = z.object({ ... ERD §3.4 모든 컬럼 (id uuid, coupang_order_id, ...) });
-          export type Order = z.infer<typeof OrderSchema>;
-
-        technician.ts:
-          export const TechnicianGradeSchema = z.enum(['bronze','silver','gold']);
-          export const TechnicianStatusSchema = z.enum(['active','paused','terminated']);
-          export const TechnicianSchema = z.object({ ... ERD §3.1 컬럼 });
-          export type Technician = z.infer<typeof TechnicianSchema>;
-
-        customer.ts:
-          export const CustomerSchema = z.object({ ... ERD §3.2 컬럼 (단 _encrypted 필드는 z.instanceof(Uint8Array) 또는 z.unknown() 으로 둠 — bytea 표현 추상화) });
-          export type Customer = z.infer<typeof CustomerSchema>;
-          export const CustomerForTechnicianSchema = z.object({ id, phone_tail4, address_region_sido, address_region_sigungu, address_lat, address_lng });
-          export type CustomerForTechnician = z.infer<typeof CustomerForTechnicianSchema>;
-
-        photo.ts:
-          export const PhotoSlotSchema = z.enum(['pre_tv_screen','pre_wall','in_progress','post_front','post_left','post_right','extra','issue_evidence']);
-          export const PhotoTierSchema = z.enum(['hot','warm','cold']);
-          export const PhotoSchema = z.object({ ... ERD §3.6 컬럼 });
-          export type Photo = z.infer<typeof PhotoSchema>;
-
-        installation.ts:
-          export const InstallationResultSchema = z.enum(['no_drill_success','drill_converted','postponed','cancelled']);
-          export const InstallationSchema = z.object({ ... ERD §3.5 컬럼 });
-          export type Installation = z.infer<typeof InstallationSchema>;
-
-        index.ts:
-          - 위 모든 schema · type re-export
+        login-form.tsx (Client Component):
+          'use client';
+          export interface AdminLoginFormProps { error?: string; redirect?: string }
+          export function AdminLoginForm(props: AdminLoginFormProps): ReactElement
 
         ## 요구사항
-        - 라이브러리: zod@^3.24.1 (다른 검증 라이브러리 금지)
-        - 모든 timestamptz → z.string().datetime() 또는 z.coerce.date()
-        - uuid → z.string().uuid()
-        - numeric(10,7) lat/lng → z.number()
-        - jsonb → z.unknown() 또는 z.record(z.unknown())
-        - text[] → z.array(z.string())
-        - check 제약(예: status enum, grade enum) → z.enum() 그대로 매핑
-        - 모든 .nullable() · .optional() 명시 (DB nullable 컬럼 = .nullable())
-        - 코멘트는 한국어 한 줄 (왜 nullable 인지 등 ERD 근거 표기)
+
+        page.tsx:
+        - getSession() 호출 → 이미 admin 으로 로그인되어있으면 redirect('/')
+        - 컨테이너: min-h-dvh · grid · place-items-center · bg-muted · px-4
+        - 가운데 Card (max-w-md · w-full)
+        - 상단: "마운트파트너스 관리자" + "허가된 IP에서만 접근 가능합니다." 안내 문구
+
+        actions.ts:
+        - formData 추출: username · password · adminRole (selected hint, 기본 'cs_admin')
+        - adminRole 이 5개 enum 중 하나가 아니면 → adminRole = 'cs_admin' (기본값으로 fallback)
+        - signInWithUsername({ username, password, userType: 'admin', adminRoleHint: adminRole as AdminRole })
+        - SignInResult 그대로 return
+
+        login-form.tsx:
+        - useActionState 사용
+        - 3 입력: 역할 Select (super_admin/cs_admin/dispatch_admin/ops_admin/auditor 한글 라벨), username Input, password Input
+          (Select 는 native <select className="..."> 또는 @mount/ui 에 Select 가 없으니 native 사용)
+          한글 라벨: 대표/본사CS/배차담당/쿠팡CS/감사
+        - "로그인" Button (default size · w-full)
+        - state.error 에 '계정이 잠겼습니다' 포함하면 추가 안내 텍스트 (text-destructive · text-sm)
+          "10분 후 다시 시도하거나, 본사 CS 에 잠금 해제 요청 (kakao 채널)"
+        - 성공 시 redirect '/admin' 또는 state.redirect
+
+        ## 라이브러리 사용
+        - @mount/ui 의 Button · Input · Card · CardHeader · CardTitle · CardContent · CardDescription
+        - @mount/lib 의 signInWithUsername · getSession · type AdminRole
 
         ## 금지
-        - any · z.any() 사용 금지 (z.unknown() 사용)
-        - 임의 enum 값 추가 금지 — ERD §3 정의 그대로
-        - 각 파일이 다른 파일 import 금지 (전부 독립)
-
-        ## ERD 컬럼 참조 (정확한 컬럼명 · 타입 매핑)
-
-        Order (§3.4): id, coupang_order_id, order_received_at, customer_id, tv_brand|null, tv_model|null,
-          tv_size_inch|null (number), tv_serial|null, option_selected, price_option_a|null, price_option_b,
-          price_option_c, price_paid_by_customer_to_coupang, currency, requested_install_date|null,
-          requested_install_date_2|null, scheduled_installation_at|null, scheduled_tz, status,
-          status_changed_at, assigned_technician_id|null, assigned_at|null, happy_call_result|null,
-          wall_type|null, special_notes|null, conversion_from_no_drill, conversion_difference_amount|null,
-          conversion_agreed_method|null, conversion_agreed_at|null, coupang_paid_at|null,
-          created_at, updated_at, retention_until|null
-
-        Technician (§3.1): id, auth_user_id|null, login_id, display_name, phone, email|null,
-          birth_date|null, vehicle_number|null, home_base_region|null, preferred_regions(string[]),
-          grade, daily_max_jobs, weekend_enabled, status, device_fingerprint_primary|null,
-          device_fingerprints_all(string[]), last_pw_changed_at, failed_login_count,
-          locked_until|null, last_known_lat|null, last_known_lng|null,
-          last_location_updated_at|null, created_at, updated_at
-
-        Customer (§3.2): id, name_encrypted(unknown), phone_encrypted(unknown), phone_tail4,
-          address_road_encrypted|unknown|null, address_detail_encrypted|unknown|null,
-          address_region_sido|null, address_region_sigungu|null, address_lat|null, address_lng|null,
-          coupang_customer_id|null, pii_retained_until|null, created_at, updated_at
-
-        Photo (§3.6): id, order_id, installation_id|null, technician_id, slot, storage_tier,
-          supabase_path|null, r2_key|null, thumbnail_supabase_path|null, mime_type, size_bytes|null,
-          width|null, height|null, sha256|null, taken_at|null, taken_lat|null, taken_lng|null,
-          uploaded_at, tier_changed_at|null, access_count, last_accessed_at|null
-
-        Installation (§3.5): id, order_id, technician_id, departed_at|null, arrived_at|null,
-          started_at|null, completed_at|null, arrived_lat|null, arrived_lng|null,
-          completed_lat|null, completed_lng|null, result_type|null, on_site_notes|null,
-          predicted_outcome|null, actual_outcome|null, route_sequence|null,
-          created_at, updated_at
+        - react-hook-form · zod runtime · 외부 select 라이브러리 사용 금지
+        - any 사용 금지
+        - inline style 금지
 
       gates:
-        - name: "package.json 존재"
-          command: "test -f D:/MOUNT1/packages/types/package.json"
-        - name: "5 schema + index 파일 존재"
-          command: "for f in order technician customer photo installation index; do test -f D:/MOUNT1/packages/types/src/$f.ts || exit 1; done"
-        - name: "tsconfig + eslint 존재"
-          command: "test -f D:/MOUNT1/packages/types/tsconfig.json && test -f D:/MOUNT1/packages/types/eslint.config.mjs"
-        - name: "zod 의존성"
-          command: "grep -q '\"zod\"' D:/MOUNT1/packages/types/package.json"
-        - name: "@mount/types 패키지명"
-          command: "grep -q '@mount/types' D:/MOUNT1/packages/types/package.json"
-        - name: "OrderSchema 정의"
-          command: "grep -q 'OrderSchema' D:/MOUNT1/packages/types/src/order.ts && grep -q 'OrderStatusSchema' D:/MOUNT1/packages/types/src/order.ts"
-        - name: "OrderStatus 18 enum 값 (received·paid·closed 일부)"
-          command: "grep -q 'received' D:/MOUNT1/packages/types/src/order.ts && grep -q 'cancel_confirmed_coupang_transfer' D:/MOUNT1/packages/types/src/order.ts && grep -q 'closed' D:/MOUNT1/packages/types/src/order.ts"
-        - name: "PhotoSlotSchema 8 값"
-          command: "grep -q 'pre_tv_screen' D:/MOUNT1/packages/types/src/photo.ts && grep -q 'issue_evidence' D:/MOUNT1/packages/types/src/photo.ts"
-        - name: "TechnicianGradeSchema bronze/silver/gold"
-          command: "grep -q 'bronze' D:/MOUNT1/packages/types/src/technician.ts && grep -q 'gold' D:/MOUNT1/packages/types/src/technician.ts"
+        - name: "3 파일 존재"
+          command: "test -f 'D:/MOUNT1/apps/admin/app/(auth)/login/page.tsx' && test -f 'D:/MOUNT1/apps/admin/app/(auth)/login/actions.ts' && test -f 'D:/MOUNT1/apps/admin/app/(auth)/login/login-form.tsx'"
+        - name: "Server Action use server"
+          command: "head -3 'D:/MOUNT1/apps/admin/app/(auth)/login/actions.ts' | grep -q 'use server'"
+        - name: "Form use client"
+          command: "head -3 'D:/MOUNT1/apps/admin/app/(auth)/login/login-form.tsx' | grep -q 'use client'"
+        - name: "userType admin"
+          command: "grep -q \"userType: 'admin'\" 'D:/MOUNT1/apps/admin/app/(auth)/login/actions.ts'"
+        - name: "5 역할 enum 노출"
+          command: "grep -q 'super_admin' 'D:/MOUNT1/apps/admin/app/(auth)/login/login-form.tsx' && grep -q 'auditor' 'D:/MOUNT1/apps/admin/app/(auth)/login/login-form.tsx'"
+        - name: "한글 라벨 (대표·감사)"
+          command: "grep -q '대표' 'D:/MOUNT1/apps/admin/app/(auth)/login/login-form.tsx' && grep -q '감사' 'D:/MOUNT1/apps/admin/app/(auth)/login/login-form.tsx'"
         - name: "any 사용 없음"
-          command: "! grep -rnE ': any\\b|z\\.any\\(\\)' D:/MOUNT1/packages/types/src/"
-        - name: "각 schema 파일 독립 (서로 import 안 함)"
-          command: "! grep -E \"from '\\./(order|technician|customer|photo|installation)\" D:/MOUNT1/packages/types/src/order.ts D:/MOUNT1/packages/types/src/technician.ts D:/MOUNT1/packages/types/src/customer.ts D:/MOUNT1/packages/types/src/photo.ts D:/MOUNT1/packages/types/src/installation.ts"
+          command: "! grep -nE ': any\\b|as any\\b' 'D:/MOUNT1/apps/admin/app/(auth)/login/page.tsx' 'D:/MOUNT1/apps/admin/app/(auth)/login/actions.ts' 'D:/MOUNT1/apps/admin/app/(auth)/login/login-form.tsx'"
 
     # ────────────────────────────────────────────────────────────
-    # Task 5 · driver 앱 PWA Service Worker (@serwist/next)
+    # Task 3 · Driver Today (A02 리스트 탭) — 오늘 시공건 카드 리스트
     # ────────────────────────────────────────────────────────────
-    - name: pwa-serwist
+    - name: driver-today
       instruction: |
-        D:/MOUNT1/apps/driver/ 에 PWA Service Worker (@serwist/next) 도입.
+        D:/MOUNT1/apps/driver/app/(driver)/today/ 에 기사앱 오늘 페이지 구현.
 
         ## 컨텍스트
-        - Next.js 16.2.4 App Router · React 19
-        - 기존 next.config.ts 에 withSentryConfig 가 적용됨 (D:/MOUNT1/apps/driver/next.config.ts)
-        - 기존 manifest.json: D:/MOUNT1/apps/driver/public/manifest.json
-        - 기사앱 = 모바일 PWA · 현장(4G/5G) 가용성 핵심
-        - apps/admin 은 PWA 적용 안 함 (이번 태스크 범위 아님 — admin/ 건드리지 말 것)
+        - Next.js 16 App Router · React 19 · Server Component (데이터 페치)
+        - DB View: `v_technician_today` (이미 0001_init.sql 에 존재 + types.generated 에 매핑)
+        - View columns: order_id, assigned_technician_id, scheduled_installation_at, status, phone_tail4, region, tv, pre_call_done, photo_count
+        - 기사 인증 필수 — `requireRole(['technician'])` 사용 (미로그인 시 RedirectError throw)
+        - 기존 `@mount/db` getServerClient · `@mount/lib/auth` requireRole · `@mount/ui` 사용
 
-        ## 생성 파일
-        - D:/MOUNT1/apps/driver/app/sw.ts — Service Worker entry (serwist defaultCache + precacheRoutes)
-        - D:/MOUNT1/apps/driver/app/offline/page.tsx — 오프라인 fallback 페이지 (간단한 안내)
+        ## 생성/수정 파일
+        - D:/MOUNT1/apps/driver/app/(driver)/today/page.tsx (신규)
+        - D:/MOUNT1/apps/driver/app/(driver)/today/order-card.tsx (신규) — 카드 컴포넌트
+        - D:/MOUNT1/apps/driver/app/(driver)/today/empty-state.tsx (신규) — Empty UI
 
-        ## 수정 파일
-        - D:/MOUNT1/apps/driver/next.config.ts — withSerwist + withSentryConfig 체이닝
-        - D:/MOUNT1/apps/driver/package.json — @serwist/next + serwist devDependency 추가
-        - D:/MOUNT1/apps/driver/public/manifest.json — start_url · scope · icons 등 보강
-        - D:/MOUNT1/apps/driver/app/layout.tsx — viewport 또는 metadata 변경 없음 (참조만)
+        ## 시그니처
 
-        ## 시그니처 / 구조
+        page.tsx (Server Component):
+          export default async function TodayPage(): Promise<ReactElement>
 
-        sw.ts:
-          import { defaultCache } from '@serwist/next/worker';
-          import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist';
-          import { Serwist } from 'serwist';
-
-          declare global {
-            interface WorkerGlobalScope extends SerwistGlobalConfig {
-              __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
-            }
+        order-card.tsx (Server Component or shared):
+          export interface OrderCardData {
+            order_id: string;
+            scheduled_installation_at: string | null;
+            status: string;
+            phone_tail4: string;
+            region: string;
+            tv: string;
+            pre_call_done: boolean;
+            photo_count: number;
           }
+          export function OrderCard(props: OrderCardData): ReactElement
 
-          declare const self: ServiceWorkerGlobalScope;
-
-          const serwist = new Serwist({
-            precacheEntries: self.__SW_MANIFEST,
-            skipWaiting: true,
-            clientsClaim: true,
-            navigationPreload: true,
-            runtimeCaching: defaultCache,
-            fallbacks: {
-              entries: [
-                { url: '/offline', matcher: ({ request }) => request.destination === 'document' },
-              ],
-            },
-          });
-
-          serwist.addEventListeners();
-
-        offline/page.tsx:
-          export default function OfflinePage(): React.ReactElement
-          - 컨테이너: min-h-dvh · flex · items-center · justify-center
-          - 제목 "오프라인 상태입니다" + 부제 "네트워크 연결을 확인하고 다시 시도해 주세요"
-          - 새로고침 안내 (window.location.reload)
-          - 이 페이지는 'use client' (reload 버튼 사용)
-
-        next.config.ts (수정):
-          - 최상단 import: import withSerwistInit from '@serwist/next';
-          - withSerwist 옵션: { swSrc: 'app/sw.ts', swDest: 'public/sw.js', cacheOnNavigation: true, reloadOnOnline: true }
-          - 체이닝 순서: withSentryConfig(withSerwist(nextConfig), sentryOptions)
-          - 기존 nextConfig·withSentryConfig 옵션 유지
+        empty-state.tsx:
+          export function EmptyState(): ReactElement
 
         ## 요구사항
-        - 라이브러리: @serwist/next@^9.0.0 + serwist@^9.0.0 (둘 다 devDependencies)
-        - manifest.json 추가/보강 키:
-          · "start_url": "/"
-          · "scope": "/"
-          · "background_color": "#ffffff"
-          · "theme_color": "#2563eb"
-          · "orientation": "portrait"
-          · 기존 icons 배열 유지 (없으면 추가 안 해도 됨 — TD-008 별도)
-        - sw.ts 는 Next.js 16 의 app/ 디렉토리에 두되 정적 빌드 대상에 포함되지 않게 (Serwist 가 별도 처리)
+
+        page.tsx:
+        - try/catch RedirectError → next/navigation 의 redirect('/login?redirect=/') 호출
+        - 인증 통과 후 getServerClient() → .from('v_technician_today').select('*').order('scheduled_installation_at', { ascending: true })
+        - 결과 비어있으면 <EmptyState />
+        - 결과 있으면 grid (mobile: 1열) 으로 OrderCard 매핑
+        - 컨테이너: min-h-dvh · safe-top · safe-bottom · max-w-screen-md · mx-auto · px-4 · py-6
+        - 상단 헤더: h1 "오늘의 시공" + 우측 작은 텍스트 (오늘 날짜 한국식 — Intl.DateTimeFormat 'ko-KR')
+
+        order-card.tsx:
+        - Card · CardHeader (시각·상태 Badge) · CardContent (지역·TV·전화 뒷자리)
+        - 시각: scheduled_installation_at → Intl.DateTimeFormat ko-KR (HH:mm) (null 이면 '시간 미정')
+        - 상태 Badge variant 매핑: assigned/en_route='secondary', on_site/in_progress='default', no_drill_completed/drill_converted_completed='outline'
+        - 30분 전 통화 미완료 시 좌측 빨간 점 + "통화 필요" Badge (variant='destructive')
+        - 사진 진행도: "사진 {photo_count}/6" (6장 = pre 2 + post 3 + extra 1 권장)
+        - 카드 우상단에 ChevronRight 아이콘 (lucide-react) — 향후 상세 진입 hint
+        - 카드 전체 클릭 가능 — Link href={`/order/${order_id}`} 로 감쌈 (next/link)
+        - 큰 터치 영역: padding 충분 · text 가독성 (50대 기사 — base size 이상)
+
+        empty-state.tsx:
+        - 가운데 정렬, 큰 아이콘 (CalendarX from lucide-react)
+        - "오늘 배차된 주문이 없어요" 제목 + "캘린더에서 다른 날짜를 확인해보세요" 부제
+        - "캘린더 보기" Button (variant='outline') — Link href='/calendar' (placeholder)
+
+        ## 라이브러리 사용
+        - @mount/db: getServerClient (Database 타입은 자동 추론)
+        - @mount/lib: requireRole, RedirectError
+        - @mount/ui: Card · CardHeader · CardTitle · CardContent · Badge · Button · Skeleton
+        - lucide-react: ChevronRight · CalendarX
+        - next/link · next/navigation (redirect)
 
         ## 금지
-        - apps/admin 디렉토리 변경 금지
-        - next-pwa 라이브러리 사용 금지 (deprecated)
-        - 기존 withSentryConfig 옵션 변경 금지
-        - 기존 manifest.json 의 name·short_name·display·icons 삭제 금지
+        - 클라이언트 fetch 금지 (Server Component 만)
+        - SWR · TanStack Query 등 client cache 라이브러리 금지 (이 화면은 서버 렌더 only)
+        - any 사용 금지
+        - inline style 금지
 
       gates:
-        - name: "sw.ts 존재"
-          command: "test -f D:/MOUNT1/apps/driver/app/sw.ts"
-        - name: "offline 페이지 존재"
-          command: "test -f D:/MOUNT1/apps/driver/app/offline/page.tsx"
-        - name: "@serwist/next devDependency"
-          command: "grep -q '@serwist/next' D:/MOUNT1/apps/driver/package.json"
-        - name: "serwist devDependency"
-          command: "grep -q '\"serwist\"' D:/MOUNT1/apps/driver/package.json"
-        - name: "next.config 에 withSerwist 체이닝"
-          command: "grep -q 'withSerwist' D:/MOUNT1/apps/driver/next.config.ts && grep -q 'withSentryConfig' D:/MOUNT1/apps/driver/next.config.ts"
-        - name: "manifest start_url"
-          command: "grep -q 'start_url' D:/MOUNT1/apps/driver/public/manifest.json"
-        - name: "manifest theme_color"
-          command: "grep -q 'theme_color' D:/MOUNT1/apps/driver/public/manifest.json"
-        - name: "admin 미수정"
-          command: "[ ! -f D:/MOUNT1/apps/admin/app/sw.ts ] && [ ! -f D:/MOUNT1/apps/admin/app/offline/page.tsx ]"
-        - name: "Serwist class 사용"
-          command: "grep -q 'new Serwist' D:/MOUNT1/apps/driver/app/sw.ts"
-        - name: "fallbacks offline"
-          command: "grep -q '/offline' D:/MOUNT1/apps/driver/app/sw.ts"
+        - name: "3 파일 존재"
+          command: "test -f 'D:/MOUNT1/apps/driver/app/(driver)/today/page.tsx' && test -f 'D:/MOUNT1/apps/driver/app/(driver)/today/order-card.tsx' && test -f 'D:/MOUNT1/apps/driver/app/(driver)/today/empty-state.tsx'"
+        - name: "v_technician_today 뷰 사용"
+          command: "grep -q 'v_technician_today' 'D:/MOUNT1/apps/driver/app/(driver)/today/page.tsx'"
+        - name: "requireRole technician"
+          command: "grep -q 'requireRole' 'D:/MOUNT1/apps/driver/app/(driver)/today/page.tsx' && grep -q 'technician' 'D:/MOUNT1/apps/driver/app/(driver)/today/page.tsx'"
+        - name: "RedirectError 처리"
+          command: "grep -q 'RedirectError' 'D:/MOUNT1/apps/driver/app/(driver)/today/page.tsx'"
+        - name: "Card 컴포넌트 사용"
+          command: "grep -q 'Card' 'D:/MOUNT1/apps/driver/app/(driver)/today/order-card.tsx'"
+        - name: "lucide ChevronRight"
+          command: "grep -q 'ChevronRight' 'D:/MOUNT1/apps/driver/app/(driver)/today/order-card.tsx'"
+        - name: "EmptyState lucide CalendarX"
+          command: "grep -q 'CalendarX' 'D:/MOUNT1/apps/driver/app/(driver)/today/empty-state.tsx'"
+        - name: "any 사용 없음"
+          command: "! grep -nE ': any\\b|as any\\b' 'D:/MOUNT1/apps/driver/app/(driver)/today/page.tsx' 'D:/MOUNT1/apps/driver/app/(driver)/today/order-card.tsx' 'D:/MOUNT1/apps/driver/app/(driver)/today/empty-state.tsx'"
+
+    # ────────────────────────────────────────────────────────────
+    # Task 4 · Admin Today (B02) — 관리자 KPI 대시보드 메인
+    # ────────────────────────────────────────────────────────────
+    - name: admin-today
+      instruction: |
+        D:/MOUNT1/apps/admin/app/(admin)/today/ 에 관리자 KPI 대시보드 메인 구현.
+        라우팅: '/' 가 아닌 '/today' 경로로 (root 는 기존 /login 또는 redirect 처리).
+
+        ## 컨텍스트
+        - Next.js 16 App Router · React 19 · Server Component
+        - DB View: `v_orders_dashboard` (0001_init.sql 존재, types.generated 매핑)
+        - 관리자 인증 필수 — `requireRole(['admin'])` 사용
+        - admin 은 desktop 우선 (1280px+)
+        - 4 KPI 카드: 오늘 배차 / 진행 중 / 완료 / 취소
+        - 미배차 알림 배너 (assigned_technician_name IS NULL 카운트)
+        - 기사별 건수 막대 (간단한 div 기반 — 차트 라이브러리 X)
+
+        ## 생성/수정 파일
+        - D:/MOUNT1/apps/admin/app/(admin)/today/page.tsx (신규)
+        - D:/MOUNT1/apps/admin/app/(admin)/today/kpi-card.tsx (신규)
+        - D:/MOUNT1/apps/admin/app/(admin)/today/unassigned-banner.tsx (신규)
+        - D:/MOUNT1/apps/admin/app/(admin)/today/technician-bars.tsx (신규)
+
+        ## 시그니처
+
+        page.tsx (Server Component):
+          export default async function AdminTodayPage(): Promise<ReactElement>
+
+        kpi-card.tsx:
+          export interface KpiCardProps {
+            label: string;
+            value: number | string;
+            hint?: string;
+            tone?: 'default' | 'success' | 'warning' | 'destructive';
+          }
+          export function KpiCard(props: KpiCardProps): ReactElement
+
+        unassigned-banner.tsx:
+          export interface UnassignedBannerProps { count: number }
+          export function UnassignedBanner(props: UnassignedBannerProps): ReactElement
+
+        technician-bars.tsx:
+          export interface TechnicianStat { name: string; count: number }
+          export interface TechnicianBarsProps { stats: TechnicianStat[]; max: number }
+          export function TechnicianBars(props: TechnicianBarsProps): ReactElement
+
+        ## 요구사항
+
+        page.tsx:
+        - try/catch RedirectError → redirect('/login?redirect=/today')
+        - getServerClient() 로 다음 4개 쿼리 병렬 (Promise.all):
+          1) 오늘 시공건: from('v_orders_dashboard').select('id, status, technician_name', { count: 'exact' })
+             .gte('scheduled_installation_at', 오늘 KST 00:00) .lt(오늘 KST 24:00)
+          2) 진행중: status in ('en_route','on_site','in_progress')
+          3) 완료(오늘): status in ('no_drill_completed','drill_converted_completed','paid','closed') and scheduled today
+          4) 취소(오늘): status in ('cancel_requested','cancel_confirmed_coupang_transfer')
+        - 미배차: 위 1) 결과에서 technician_name === null 카운트
+        - 기사별 stats: 1) 결과를 technician_name 별로 group + 카운트 (자바스크립트 reduce)
+        - 컨테이너: min-h-dvh · max-w-screen-2xl · mx-auto · px-6 · py-8
+        - 헤더: h1 "오늘 운영 현황" + 우측 새로고침 시각 (Intl.DateTimeFormat ko-KR)
+        - <UnassignedBanner count={...} /> (count > 0 일 때만 렌더)
+        - 4 KPI grid (md:grid-cols-4 · gap-4)
+        - 하단 <TechnicianBars stats={...} max={...} />
+
+        kpi-card.tsx:
+        - Card · CardContent
+        - label 작은 (text-sm · text-muted-foreground)
+        - value 큰 (text-3xl · font-bold)
+        - hint 보조 (text-xs · text-muted-foreground)
+        - tone='destructive' 면 좌측 빨간 줄 (border-l-4 border-destructive)
+        - tone='warning' 면 좌측 노란 줄 (border-l-4 border-warning)
+        - tone='success' 면 좌측 초록 줄 (border-l-4 border-success)
+
+        unassigned-banner.tsx:
+        - bg-warning/10 · border · border-warning · rounded · px-4 · py-3 · flex · items-center · gap-3
+        - 좌측 AlertCircle 아이콘 (lucide-react)
+        - 텍스트: "미배차 {count}건이 있습니다." + 작은 부제 "배차 콘솔에서 처리해 주세요."
+        - 우측 Button (size='sm' · variant='outline') Link href='/dispatch' "배차 콘솔"
+
+        technician-bars.tsx:
+        - Card · CardHeader (CardTitle "기사별 오늘 건수")
+        - CardContent: stats.map (이름 + 건수 + 막대)
+          · 막대: <div className="h-2 bg-primary rounded" style={{ width: ... }} />
+          ⚠ inline style width 만은 예외 허용 (% 동적 값)
+        - 빈 stats: "오늘 배차된 기사가 없습니다." 안내
+
+        ## 라이브러리 사용
+        - @mount/db: getServerClient
+        - @mount/lib: requireRole, RedirectError
+        - @mount/ui: Card · CardHeader · CardTitle · CardContent · Button
+        - lucide-react: AlertCircle
+        - next/link · next/navigation
+
+        ## 금지
+        - recharts · chart.js 등 차트 라이브러리 금지 (technician-bars 는 div 기반)
+        - 클라이언트 fetch 금지 (Server Component)
+        - any 사용 금지
+
+      gates:
+        - name: "4 파일 존재"
+          command: "test -f 'D:/MOUNT1/apps/admin/app/(admin)/today/page.tsx' && test -f 'D:/MOUNT1/apps/admin/app/(admin)/today/kpi-card.tsx' && test -f 'D:/MOUNT1/apps/admin/app/(admin)/today/unassigned-banner.tsx' && test -f 'D:/MOUNT1/apps/admin/app/(admin)/today/technician-bars.tsx'"
+        - name: "v_orders_dashboard 뷰 사용"
+          command: "grep -q 'v_orders_dashboard' 'D:/MOUNT1/apps/admin/app/(admin)/today/page.tsx'"
+        - name: "requireRole admin"
+          command: "grep -q 'requireRole' 'D:/MOUNT1/apps/admin/app/(admin)/today/page.tsx' && grep -q \"'admin'\" 'D:/MOUNT1/apps/admin/app/(admin)/today/page.tsx'"
+        - name: "Promise.all 사용"
+          command: "grep -q 'Promise.all' 'D:/MOUNT1/apps/admin/app/(admin)/today/page.tsx'"
+        - name: "KpiCard tone variants"
+          command: "grep -q 'destructive' 'D:/MOUNT1/apps/admin/app/(admin)/today/kpi-card.tsx' && grep -q 'success' 'D:/MOUNT1/apps/admin/app/(admin)/today/kpi-card.tsx'"
+        - name: "AlertCircle lucide"
+          command: "grep -q 'AlertCircle' 'D:/MOUNT1/apps/admin/app/(admin)/today/unassigned-banner.tsx'"
+        - name: "TechnicianBars inline width 만"
+          command: "grep -q 'style={{' 'D:/MOUNT1/apps/admin/app/(admin)/today/technician-bars.tsx'"
+        - name: "any 사용 없음"
+          command: "! grep -nE ': any\\b|as any\\b' 'D:/MOUNT1/apps/admin/app/(admin)/today/page.tsx' 'D:/MOUNT1/apps/admin/app/(admin)/today/kpi-card.tsx' 'D:/MOUNT1/apps/admin/app/(admin)/today/unassigned-banner.tsx' 'D:/MOUNT1/apps/admin/app/(admin)/today/technician-bars.tsx'"

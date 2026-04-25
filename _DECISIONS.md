@@ -78,3 +78,14 @@
   - `lib/src/auth/session.ts`: 자체 정의 AppMetadata 인터페이스가 Supabase UserAppMetadata 와 호환 불가 → `Record<string, unknown>` 캐스트로 변경
 - 2026-04-25 · R1 검증 · typecheck **6/6** (+1 신규 @mount/types) · lint **6/6** · build **2/2** (driver 36.8s + 30.7s tsc · admin 29.0s + 27.0s tsc) 모두 통과. driver 에 `/offline` 라우트 prerender 확인.
 - 2026-04-25 · TD 상환 · TD-007 (PWA Service Worker) 동시 상환.
+
+## 2026-04-25 · Phase 0 Day 0.6 R2 Pages (login + today)
+
+- 2026-04-25 · 품앗이 R2 회고 · Codex 4 병렬 task 중 **1 task만 성공** (driver-login). admin-login / driver-today / admin-today 는 codex 가 PowerShell 로 파일 탐색(rg, Get-Content) 반복하다가 자체 timeout 또는 토큰 한계 도달, 실제 파일 작성 못 함. status.json stale (이전 R1 과 동일 패턴).
+- 2026-04-25 · 결정 · 은진님 선택으로 **실패 3 task Claude 직접 작성** (옵션 A) · 품앗이 fallback. 헌법 "Claude=PM, Codex=구현" 원칙 일시 위반이지만 R2 가 R3 의존성이라 시간 단축 우선. 다음 라운드부터 instruction 더 짧고 명확하게(시그니처+게이트만, ERD 컨텍스트 별도 문서 link) 시도.
+- 2026-04-25 · driver-login (codex) · `apps/driver/app/(driver)/login/{page,actions,login-form}.tsx` 3 파일, 109 LOC, useActionState + useTransition + h-12 큰 터치 영역 + 안전한 redirect path 검증.
+- 2026-04-25 · admin-login (Claude) · 5 역할 select 한글 라벨(대표/본사CS/배차담당/쿠팡CS/감사) · 잠금 메시지 시 추가 안내(10분 후 시도 또는 본사 CS 연락).
+- 2026-04-25 · driver-today (Claude) · `v_technician_today` view 사용. requireRole·RedirectError·ForbiddenError 분기. OrderCard 에 통화 필요 Badge(destructive · PhoneCall 아이콘) · 사진 진행도 6장 기준.
+- 2026-04-25 · admin-today (Claude) · `v_orders_dashboard` view 사용. Promise.all 4 쿼리 (오늘 시공·진행·완료·취소). KST→UTC 변환 helper로 today range 계산. 기사별 막대는 div + inline width 만 (차트 lib 없이).
+- 2026-04-25 · 의존성 fix · apps/{driver,admin}/package.json 에 `lucide-react@^0.469.0` 직접 dependency 추가 · 기존엔 @mount/ui 의 transitive 였지만 apps 가 직접 import 하면 명시 필요.
+- 2026-04-25 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 통과. driver 라우트: `/`, `/login`, `/offline`, `/today`, `/api/health`. admin 라우트: `/`, `/login`, `/today`, `/api/health`.
