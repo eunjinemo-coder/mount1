@@ -15,7 +15,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "db:types": "echo 'TODO: supabase gen types typescript --project-id <PROJ_ID> > src/types.generated.ts'"
+    "db:types:dev": "supabase gen types typescript --project-id nzphbeookxotdjzishqn > src/types.generated.ts",
+    "db:types:prod": "supabase gen types typescript --project-id rydmceypkospgzhvfpyx > src/types.generated.ts",
+    "db:types": "supabase gen types typescript --linked > src/types.generated.ts"
   },
   "dependencies": {
     "next": "^16.2.4",
