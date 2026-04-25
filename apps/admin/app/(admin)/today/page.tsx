@@ -79,12 +79,30 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
     .gte('scheduled_installation_at', start)
     .lt('scheduled_installation_at', end);
 
-  const [todayResult, progressResult, completedResult, cancelledResult] = await Promise.all([
-    todayQuery,
-    progressQuery,
-    completedQuery,
-    cancelledQuery,
-  ]);
+  // 미결제: status in awaiting_payment | payment_sent (오늘)
+  const unpaidQuery = client
+    .from('v_orders_dashboard')
+    .select('id', { count: 'exact', head: true })
+    .in('status', ['awaiting_payment', 'payment_sent'])
+    .gte('scheduled_installation_at', start)
+    .lt('scheduled_installation_at', end);
+
+  // 이슈: issues 테이블에서 오늘 신고건
+  const issuesQuery = client
+    .from('issues')
+    .select('id', { count: 'exact', head: true })
+    .gte('reported_at', start)
+    .lt('reported_at', end);
+
+  const [todayResult, progressResult, completedResult, cancelledResult, unpaidResult, issuesResult] =
+    await Promise.all([
+      todayQuery,
+      progressQuery,
+      completedQuery,
+      cancelledQuery,
+      unpaidQuery,
+      issuesQuery,
+    ]);
 
   const todayOrders = todayResult.data ?? [];
   const todayCount = todayOrders.length;
@@ -110,7 +128,7 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
 
         {unassignedCount > 0 ? <UnassignedBanner count={unassignedCount} /> : null}
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           <KpiCard label="오늘 배차" value={todayCount} hint="모든 상태 합계" />
           <KpiCard
             label="진행 중"
@@ -123,6 +141,18 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
             value={completedResult.count ?? 0}
             tone="success"
             hint="시공·결제 완료"
+          />
+          <KpiCard
+            label="미결제"
+            value={unpaidResult.count ?? 0}
+            tone={unpaidResult.count && unpaidResult.count > 0 ? 'warning' : 'default'}
+            hint="결제 대기·발송"
+          />
+          <KpiCard
+            label="이슈"
+            value={issuesResult.count ?? 0}
+            tone={issuesResult.count && issuesResult.count > 0 ? 'destructive' : 'default'}
+            hint="현장 보고"
           />
           <KpiCard
             label="취소"

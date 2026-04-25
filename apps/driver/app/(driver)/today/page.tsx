@@ -31,12 +31,22 @@ export default async function TodayPage(): Promise<ReactElement> {
   }
 
   const client = await getServerClient();
-  const { data, error } = await client
-    .from('v_technician_today')
-    .select('*')
-    .order('scheduled_installation_at', { ascending: true });
+  const [todayResult, technicianResult] = await Promise.all([
+    client
+      .from('v_technician_today')
+      .select('*')
+      .order('scheduled_installation_at', { ascending: true }),
+    session.technicianId
+      ? client
+          .from('technicians')
+          .select('display_name')
+          .eq('id', session.technicianId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
-  const orders = !error && data ? data : [];
+  const orders = !todayResult.error && todayResult.data ? todayResult.data : [];
+  const technicianName = technicianResult.data?.display_name ?? '기사';
   const completedCount = orders.filter((o) =>
     ['no_drill_completed', 'drill_converted_completed', 'paid', 'closed'].includes(o.status ?? ''),
   ).length;
@@ -46,7 +56,7 @@ export default async function TodayPage(): Promise<ReactElement> {
   const upcomingCount = orders.length - completedCount - inProgressCount;
 
   return (
-    <DriverShell activeTab="home" technicianName={session.userId.slice(0, 8)}>
+    <DriverShell activeTab="home" technicianName={technicianName}>
       <div className="mx-auto max-w-screen-md px-4 py-6">
         <header className="mb-4 flex items-baseline justify-between">
           <h1 className="text-2xl font-bold">오늘의 시공</h1>
