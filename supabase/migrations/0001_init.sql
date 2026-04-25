@@ -617,7 +617,9 @@ select
   o.tv_brand || ' ' || o.tv_model || ' (' || o.tv_size_inch || '")' as tv_display,
   (select count(*) from photos p where p.order_id = o.id and p.slot like 'pre_%')  as pre_photos,
   (select count(*) from photos p where p.order_id = o.id and p.slot like 'post_%') as post_photos,
-  (select ps.status from payments ps where ps.order_id = o.id order by ps.paid_at desc limit 1) as last_payment_status
+  -- 결제 lifecycle 은 payment_links.status 가 단일 원천 (pending/clicked/paid/expired/cancelled/failed).
+  -- ERD §3.13 payments 에는 status 컬럼이 없음 (트랜잭션 기록 자체) → §4.1 본문 오기 정정.
+  (select pl.status from payment_links pl where pl.order_id = o.id order by pl.created_at desc limit 1) as last_payment_status
 from orders o
 join customers c on c.id = o.customer_id
 left join technicians t on t.id = o.assigned_technician_id;
