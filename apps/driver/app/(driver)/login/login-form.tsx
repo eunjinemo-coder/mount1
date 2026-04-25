@@ -1,7 +1,7 @@
 'use client';
 
 import type { SignInResult } from '@mount/lib';
-import { toSafeRedirectPath } from '@mount/lib';
+import { toSafeRedirectPath } from '@mount/lib/navigation';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mount/ui';
 import { Eye, EyeOff } from 'lucide-react';
 import * as React from 'react';
