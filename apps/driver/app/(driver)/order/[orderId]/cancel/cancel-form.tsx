@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactElement } from 'react';
 import { submitCancelReportAction, type CancelCategory } from './actions';
+import { SignaturePad } from './signature-pad';
 
 export interface CancelFormProps {
   orderId: string;
@@ -42,6 +43,7 @@ export function CancelForm(props: CancelFormProps): ReactElement {
   const router = useRouter();
   const [category, setCategory] = useState<CancelCategory>('no_drill_structural');
   const [note, setNote] = useState('');
+  const [signature, setSignature] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -97,17 +99,23 @@ export function CancelForm(props: CancelFormProps): ReactElement {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">사진 · 서명</CardTitle>
+          <CardTitle className="text-base">기사 서명 (필수)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-muted-foreground text-sm">
+            본인 책임 하에 작성됨을 확인하는 서명입니다. 본사 검토 후 쿠팡 전달용 자료가 됩니다.
+          </p>
+          <SignaturePad onChange={setSignature} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">사진 증빙</CardTitle>
         </CardHeader>
         <CardContent className="text-muted-foreground space-y-1 text-sm">
           <p>
-            📷 사진 업로드 — <span className="text-foreground font-semibold">R4 photos 작업 후 통합 예정</span>
-          </p>
-          <p>
-            ✍️ 기사 서명 — <span className="text-foreground font-semibold">R5 SignaturePad 도입 예정</span>
-          </p>
-          <p className="text-xs">
-            현재는 placeholder 로 저장. 본 리포트는 본사 검토 후 쿠팡 전달.
+            현장 사진은 <span className="text-foreground font-semibold">[/order/{props.orderId}/photos]</span> 화면에서 업로드 후 본 리포트에 자동 첨부됩니다 (R6 통합 예정).
           </p>
         </CardContent>
       </Card>
@@ -120,14 +128,19 @@ export function CancelForm(props: CancelFormProps): ReactElement {
 
       <Button
         className="w-full"
-        disabled={isPending || note.trim().length < 10}
+        disabled={isPending || note.trim().length < 10 || !signature}
         onClick={() => {
+          if (!signature) {
+            setError('기사 서명을 입력해 주세요.');
+            return;
+          }
           setError(null);
           startTransition(async () => {
             const result = await submitCancelReportAction({
               orderId: props.orderId,
               category,
               situationNote: note,
+              signaturePlaceholder: signature,
             });
             if (result.ok) {
               router.push('/today');
