@@ -2,6 +2,7 @@ import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
+import { AdminShell } from '../_layout/admin-shell';
 import { AssignForm } from './assign-form';
 
 export const metadata = { title: '배차 콘솔' };
@@ -46,11 +47,11 @@ export default async function DispatchPage(): Promise<ReactElement> {
   }));
 
   return (
-    <main className="bg-background min-h-dvh px-6 py-8">
-      <div className="mx-auto max-w-screen-2xl space-y-6">
+    <AdminShell activeNav="dispatch" notificationCount={orders.length} title="Dispatch">
+      <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header className="flex items-baseline justify-between">
           <div>
-            <h1 className="text-2xl font-bold">배차 콘솔</h1>
+            <h2 className="text-2xl font-bold">배차 콘솔</h2>
             <p className="text-muted-foreground text-sm">
               미배차 {orders.length}건 · 활성 기사 {technicians.length}명
             </p>
@@ -59,6 +60,6 @@ export default async function DispatchPage(): Promise<ReactElement> {
 
         <AssignForm orders={orders} technicians={technicians} />
       </div>
-    </main>
+    </AdminShell>
   );
 }

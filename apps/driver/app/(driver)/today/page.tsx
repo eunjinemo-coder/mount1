@@ -2,6 +2,7 @@ import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
+import { DriverShell } from '../_layout/driver-shell';
 import { EmptyState } from './empty-state';
 import { OrderCard } from './order-card';
 
@@ -16,8 +17,9 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('ko-KR', {
 });
 
 export default async function TodayPage(): Promise<ReactElement> {
+  let session;
   try {
-    await requireRole(['technician']);
+    session = await requireRole(['technician']);
   } catch (error) {
     if (error instanceof RedirectError) {
       redirect(`/login?redirect=${encodeURIComponent('/today')}`);
@@ -35,14 +37,27 @@ export default async function TodayPage(): Promise<ReactElement> {
     .order('scheduled_installation_at', { ascending: true });
 
   const orders = !error && data ? data : [];
+  const completedCount = orders.filter((o) =>
+    ['no_drill_completed', 'drill_converted_completed', 'paid', 'closed'].includes(o.status ?? ''),
+  ).length;
+  const inProgressCount = orders.filter((o) =>
+    ['en_route', 'on_site', 'in_progress'].includes(o.status ?? ''),
+  ).length;
+  const upcomingCount = orders.length - completedCount - inProgressCount;
 
   return (
-    <main className="bg-background safe-top safe-bottom min-h-dvh px-4 py-6">
-      <div className="mx-auto max-w-screen-md">
-        <header className="mb-6 flex items-baseline justify-between">
+    <DriverShell activeTab="home" technicianName={session.userId.slice(0, 8)}>
+      <div className="mx-auto max-w-screen-md px-4 py-6">
+        <header className="mb-4 flex items-baseline justify-between">
           <h1 className="text-2xl font-bold">오늘의 시공</h1>
           <p className="text-muted-foreground text-sm">{DATE_FORMATTER.format(new Date())}</p>
         </header>
+
+        {orders.length > 0 ? (
+          <p className="text-muted-foreground mb-4 text-sm">
+            총 <span className="text-foreground font-semibold">{orders.length}건</span> · 완료 {completedCount} · 진행 {inProgressCount} · 예정 {upcomingCount}
+          </p>
+        ) : null}
 
         {orders.length === 0 ? (
           <EmptyState />
@@ -64,6 +79,6 @@ export default async function TodayPage(): Promise<ReactElement> {
           </div>
         )}
       </div>
-    </main>
+    </DriverShell>
   );
 }

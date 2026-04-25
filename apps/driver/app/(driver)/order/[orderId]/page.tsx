@@ -152,35 +152,42 @@ export default async function OrderDetailPage(props: {
 }
 
 function ActionButtons({ orderId, status }: { orderId: string; status: string }): ReactElement {
-  if (status === 'assigned') {
+  if (status === 'assigned' || status === 'en_route') {
     return (
-      <Button asChild className="w-full" size="lg">
-        <Link href={`/order/${orderId}/start`}>출발</Link>
-      </Button>
-    );
-  }
-  if (status === 'en_route') {
-    return (
-      <Button asChild className="w-full" size="lg">
-        <Link href={`/order/${orderId}/start`}>현장 도착</Link>
-      </Button>
+      <div className="grid gap-3">
+        <Button asChild className="w-full" size="lg">
+          <Link href={`/order/${orderId}/start`}>
+            {status === 'assigned' ? '출발' : '현장 도착'}
+          </Link>
+        </Button>
+        <Button asChild className="w-full" size="lg" variant="outline">
+          <Link href={`/order/${orderId}/pre-call`}>30분 전 통화 기록</Link>
+        </Button>
+      </div>
     );
   }
   if (status === 'on_site') {
-    // 취소 리포트(/cancel)는 R4 작업. 현재는 시공 시작 버튼만 노출.
     return (
       <div className="grid gap-3">
         <Button asChild className="w-full" size="lg">
           <Link href={`/order/${orderId}/start`}>시공 시작</Link>
+        </Button>
+        <Button asChild className="w-full" size="lg" variant="outline">
+          <Link href={`/order/${orderId}/cancel`}>취소 리포트</Link>
         </Button>
       </div>
     );
   }
   if (status === 'in_progress') {
     return (
-      <Button asChild className="w-full" size="lg">
-        <Link href={`/order/${orderId}/complete`}>시공 완료</Link>
-      </Button>
+      <div className="grid gap-3">
+        <Button asChild className="w-full" size="lg">
+          <Link href={`/order/${orderId}/complete`}>시공 완료</Link>
+        </Button>
+        <Button asChild className="w-full" size="lg" variant="outline">
+          <Link href={`/order/${orderId}/photos`}>사진 업로드</Link>
+        </Button>
+      </div>
     );
   }
   return (

@@ -2,6 +2,7 @@ import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
+import { AdminShell } from '../_layout/admin-shell';
 import { KpiCard } from './kpi-card';
 import { TechnicianBars } from './technician-bars';
 import { UnassignedBanner } from './unassigned-banner';
@@ -100,10 +101,10 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
   const technicianMax = technicianStats[0]?.count ?? 0;
 
   return (
-    <main className="bg-background min-h-dvh px-6 py-8">
-      <div className="mx-auto max-w-screen-2xl space-y-6">
+    <AdminShell activeNav="today" notificationCount={unassignedCount} title="Today">
+      <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold">오늘 운영 현황</h1>
+          <h2 className="text-2xl font-bold">오늘 운영 현황</h2>
           <p className="text-muted-foreground text-sm">기준 시각 {TIME_FORMATTER.format(new Date())}</p>
         </header>
 
@@ -133,6 +134,6 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
 
         <TechnicianBars max={technicianMax} stats={technicianStats} />
       </div>
-    </main>
+    </AdminShell>
   );
 }
