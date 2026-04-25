@@ -90,7 +90,6 @@ function PhotoSlot({ orderId, slot }: { orderId: string; slot: PhotoSlotData }):
           <Loader2 className="text-muted-foreground size-6 animate-spin" />
         ) : uploaded && slot.signedUrl ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               alt={slot.label}
               className="absolute inset-0 size-full object-cover"
