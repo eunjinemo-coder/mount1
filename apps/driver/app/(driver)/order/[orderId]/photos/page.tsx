@@ -1,24 +1,33 @@
+import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
-import { Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
-import { Camera } from 'lucide-react';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
+import { PhotoGrid } from './photo-grid';
 
 export const metadata = { title: '사진 업로드' };
 
-/**
- * A07 사진 업로드 — R5 본격 구현 (Supabase Storage `photos-hot` 버킷 + EXIF 추출).
- * 현재는 stub 페이지로 dead-end 회피.
- */
+const PHASE_LABEL: Record<string, string> = {
+  pre_tv_screen: 'TV 화면 (시공 전)',
+  pre_wall: '벽 (시공 전)',
+  post_front: '정면 (완료)',
+  post_left: '좌측 (완료)',
+  post_right: '우측 (완료)',
+  extra: '추가 (옵션)',
+};
+
+const SLOTS_PRE = ['pre_tv_screen', 'pre_wall'] as const;
+const SLOTS_POST = ['post_front', 'post_left', 'post_right'] as const;
+const SLOT_EXTRA = ['extra'] as const;
+
 export default async function PhotosPage(props: {
   params: Promise<{ orderId: string }>;
 }): Promise<ReactElement> {
   const { orderId } = await props.params;
 
-  // P0-B: middleware bypass 시 무인증 노출 방지 — Server Component 이중 방어
+  let session;
   try {
-    await requireRole(['technician']);
+    session = await requireRole(['technician']);
   } catch (error) {
     if (error instanceof RedirectError) {
       redirect(`/login?redirect=${encodeURIComponent(`/order/${orderId}/photos`)}`);
@@ -26,6 +35,40 @@ export default async function PhotosPage(props: {
     if (error instanceof ForbiddenError) redirect('/login?error=forbidden');
     throw error;
   }
+
+  const client = await getServerClient();
+  const { data: order } = await client
+    .from('orders')
+    .select('id, status')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if (!order) notFound();
+
+  // 사진 업로드는 on_site / in_progress 에서만 (RLS 정책 photos_insert_technician 과 일치)
+  const ALLOWED = ['on_site', 'in_progress'] as const;
+  if (!ALLOWED.includes(order.status as (typeof ALLOWED)[number])) {
+    redirect(`/order/${orderId}`);
+  }
+
+  // 기존 업로드 사진 조회 (자기 사진만)
+  const { data: existingPhotos } = await client
+    .from('photos')
+    .select('slot, supabase_path, uploaded_at')
+    .eq('order_id', orderId)
+    .eq('technician_id', session.technicianId ?? '');
+
+  const photosBySlot = new Map<string, { path: string | null; uploadedAt: string | null }>();
+  for (const p of existingPhotos ?? []) {
+    photosBySlot.set(p.slot, { path: p.supabase_path, uploadedAt: p.uploaded_at });
+  }
+
+  const buildSlot = (slot: string) => ({
+    slot,
+    label: PHASE_LABEL[slot] ?? slot,
+    uploaded: photosBySlot.has(slot),
+    path: photosBySlot.get(slot)?.path ?? null,
+  });
 
   return (
     <main className="bg-background safe-top safe-bottom min-h-dvh px-4 py-6">
@@ -35,27 +78,28 @@ export default async function PhotosPage(props: {
             ← 주문 상세로
           </Link>
           <h1 className="mt-2 text-2xl font-bold">사진 업로드</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            시공 전 2장 (TV·벽) → 시공 → 시공 후 3장 (정면·좌·우) 순서로 촬영해 주세요.
+          </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Camera className="size-4" />
-              R5 작업 예정
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm leading-6">
-            <p>
-              6 슬롯 사진 업로드 (시공 전 2장 + 시공 완료 3장 + extra 1장) 와 Supabase Storage{' '}
-              <code className="bg-muted rounded px-1">photos-hot</code> 버킷, EXIF 추출, 자동 압축
-              (WebP) 은 다음 라운드(R5)에서 구현 예정입니다.
-            </p>
-            <p className="text-muted-foreground">
-              임시: 사진 없이 시공 시작·완료 RPC 호출 시 <code>missing_pre_photos</code>{' '}
-              ·<code>missing_post_photos</code> 에러로 차단됩니다. 실 시공 전 본 화면 완성 필수.
-            </p>
-          </CardContent>
-        </Card>
+        <PhotoGrid
+          orderId={order.id}
+          phase="시공 전 (필수 2장)"
+          slots={SLOTS_PRE.map(buildSlot)}
+        />
+
+        <PhotoGrid
+          orderId={order.id}
+          phase="시공 후 (필수 3장)"
+          slots={SLOTS_POST.map(buildSlot)}
+        />
+
+        <PhotoGrid
+          orderId={order.id}
+          phase="추가 (옵션)"
+          slots={SLOT_EXTRA.map(buildSlot)}
+        />
       </div>
     </main>
   );
