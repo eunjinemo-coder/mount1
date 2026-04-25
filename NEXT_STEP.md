@@ -6,7 +6,10 @@
 
 ## 다음 세션 첫 작업 (우선순위)
 
-1. **Step 4 Supabase migration 본문 작성** — `02_IA/02_ERD.md §3` 기준 Phase 1 8 테이블 DDL + `02_IA/04_PERMISSIONS.md §5` RLS 24 정책 + `pg_cron` 3 스케줄 + Custom Access Token Hook. 파일 4개 (`0001_init.sql` · `0002_rls.sql` · `0003_cron.sql` · `0004_hooks.sql`). 적용: 은진님이 `supabase db push` 한 줄.
+1. ~~**Step 4 Supabase migration 본문 작성**~~ — **완료 (2026-04-25)** · 4 파일 작성: `0001_init.sql` (ERD §3 **21 테이블 전체** + 뷰 2 + 트리거 3 + app_settings seed 10키) · `0002_rls.sql` (RLS 활성 21 + 헬퍼 5 + 정책 **55**) · `0003_cron.sql` (pg_cron 3 스케줄 + stub 함수 — **`migrations_pending/` 격리**, prod Pro 전환 후 활성화) · `0004_hooks.sql` (Custom Access Token Hook · 4키 주입). **은진님 적용 대기**:
+   - dev (Free): `cd D:\MOUNT1 && supabase db push` → 0001·0002·0004 만 적용
+   - Dashboard → Auth Hooks → "Custom Access Token" → `public.custom_access_token_hook` 활성화
+   - prod 는 D-1 (2026-05-02) Pro 전환 후 `migrations_pending/0003_cron.sql` → `migrations/` 이동 + `supabase db push`
 2. **Tailwind v3 + shadcn/ui New York preset 통합** — `packages/config/tailwind.preset.ts` 본문 · 양쪽 앱 `globals.css` `@tailwind` directives · `packages/ui/src/button.tsx` variants 재작성 (`TD-002·TD-004` 동시 상환).
 3. **Sentry + PostHog 초기 연결** — 각 앱 `sentry.client.config.ts` / `sentry.server.config.ts` + `beforeSend` PII scrubber (전화·이메일 정규식) · `packages/lib/src/analytics.ts` 신규 + PostHog init (`logger.ts` 의 `TD-001` 동시 상환).
 

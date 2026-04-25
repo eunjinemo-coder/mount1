@@ -16,10 +16,10 @@
 - 원인: 스캐폴딩 단계 복잡도 제어
 - 상환: 차기 세션 별도 Step — Tailwind v3 + `packages/config/tailwind.preset.ts` 본문 + shadcn/ui New York preset 통합. 양쪽 앱 globals.css 에 `@tailwind` directives 추가.
 
-### TD-003 · Supabase migration 본문 없음
-- 위치: `supabase/migrations/`
+### ~~TD-003~~ · Supabase migration 본문 없음 — **상환 완료 (2026-04-25)**
+- 위치: `supabase/migrations/0001_init.sql · 0002_rls.sql · 0003_cron.sql · 0004_hooks.sql`
 - 원인: `02_IA/02_ERD.md` §3 의 21 테이블 DDL 이관 분량
-- 상환: Step 4 (Day -12 예정) 에 Phase 1 8 테이블 + RLS 24 정책 + pg_cron 3 스케줄 + Custom Access Token Hook.
+- 상환: 4 파일 작성 완료 — ERD §3 21 테이블 전체 DDL + 뷰 2 + 트리거 3 + RLS 55 정책 + pg_cron 3 스케줄 (stub 함수) + Custom Access Token Hook. 은진님 `supabase db push` + 대시보드 Hook 등록으로 적용.
 
 ### TD-004 · Button 컴포넌트 Tailwind class 미주입
 - 위치: `packages/ui/src/button.tsx`
