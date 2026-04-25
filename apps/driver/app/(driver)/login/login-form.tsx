@@ -2,6 +2,7 @@
 
 import type { SignInResult } from '@mount/lib';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mount/ui';
+import { Eye, EyeOff } from 'lucide-react';
 import * as React from 'react';
 import { useEffect, useState, useTransition, type ReactElement } from 'react';
 import { loginAction } from './actions';
@@ -24,6 +25,7 @@ function toSafeRedirectPath(value?: string): string | undefined {
 export function LoginForm(props: LoginFormProps): ReactElement {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [dismissedError, setDismissedError] = useState(false);
   const [isSubmitting, startTransition] = useTransition();
   const [state, submitAction] = React.useActionState(
@@ -79,19 +81,30 @@ export function LoginForm(props: LoginFormProps): ReactElement {
           </label>
           <label className="block space-y-2">
             <span className="text-sm font-medium">비밀번호</span>
-            <Input
-              autoComplete="current-password"
-              className="h-12 text-base"
-              name="password"
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setDismissedError(true);
-              }}
-              placeholder="비밀번호를 입력해 주세요"
-              required
-              type="password"
-              value={password}
-            />
+            <div className="relative">
+              <Input
+                autoComplete="current-password"
+                className="h-12 pr-12 text-base"
+                name="password"
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setDismissedError(true);
+                }}
+                placeholder="비밀번호를 입력해 주세요"
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+              />
+              <button
+                aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
+                onClick={() => setShowPassword((s) => !s)}
+                tabIndex={-1}
+                type="button"
+              >
+                {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+              </button>
+            </div>
           </label>
           {errorMessage ? (
             <p className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

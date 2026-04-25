@@ -10,6 +10,7 @@ import {
   CardTitle,
   Input,
 } from '@mount/ui';
+import { Eye, EyeOff } from 'lucide-react';
 import * as React from 'react';
 import { useEffect, useState, useTransition, type ReactElement } from 'react';
 import { adminLoginAction } from './actions';
@@ -38,6 +39,7 @@ export function AdminLoginForm(props: AdminLoginFormProps): ReactElement {
   const [adminRole, setAdminRole] = useState('cs_admin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [dismissedError, setDismissedError] = useState(false);
   const [isSubmitting, startTransition] = useTransition();
   const [state, submitAction] = React.useActionState(
@@ -106,18 +108,30 @@ export function AdminLoginForm(props: AdminLoginFormProps): ReactElement {
           </label>
           <label className="block space-y-2">
             <span className="text-sm font-medium">비밀번호</span>
-            <Input
-              autoComplete="current-password"
-              name="password"
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setDismissedError(true);
-              }}
-              placeholder="비밀번호"
-              required
-              type="password"
-              value={password}
-            />
+            <div className="relative">
+              <Input
+                autoComplete="current-password"
+                className="pr-12"
+                name="password"
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setDismissedError(true);
+                }}
+                placeholder="비밀번호"
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+              />
+              <button
+                aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
+                onClick={() => setShowPassword((s) => !s)}
+                tabIndex={-1}
+                type="button"
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
           </label>
           {errorMessage ? (
             <div className="border-destructive/30 bg-destructive/10 mt-2 rounded-md border px-3 py-2">

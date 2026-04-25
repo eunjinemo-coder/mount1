@@ -55,25 +55,17 @@ export async function uploadPhotoAction(formData: FormData): Promise<UploadResul
 
   const client = await getServerClient();
 
-  // 기존 동일 슬롯 사진이 있으면 storage 에서 먼저 삭제 (재촬영 케이스)
-  const { data: existing } = await client
-    .from('photos')
-    .select('id, supabase_path')
-    .eq('order_id', orderId)
-    .eq('slot', slot)
-    .eq('technician_id', session.technicianId)
-    .maybeSingle();
-
-  // Storage 업로드 — 경로: photos-hot/{tech_id}/{order_id}/{slot}_{timestamp}.{ext}
+  // P1-R5-2 fix: 슬롯별 고정 경로 → 동시 업로드 race condition 제거.
+  // Storage 가 자체적으로 덮어쓰기 처리 (upsert: true).
   const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
-  const objectPath = `${session.technicianId}/${orderId}/${slot}_${Date.now()}.${ext}`;
+  const objectPath = `${session.technicianId}/${orderId}/${slot}.${ext}`;
 
   const { error: uploadError } = await client.storage
     .from(STORAGE_BUCKET)
     .upload(objectPath, file, {
-      cacheControl: '31536000',
+      cacheControl: '60', // 짧은 캐시 (재촬영 즉시 반영)
       contentType: file.type,
-      upsert: false,
+      upsert: true,
     });
 
   if (uploadError) {
@@ -83,12 +75,16 @@ export async function uploadPhotoAction(formData: FormData): Promise<UploadResul
     };
   }
 
-  // photos 테이블 메타 insert/update
+  // photos 테이블 메타 upsert (slot 별 unique 제약 없으므로 기존 row 조회 후 분기)
+  const { data: existing } = await client
+    .from('photos')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('slot', slot)
+    .eq('technician_id', session.technicianId)
+    .maybeSingle();
+
   if (existing) {
-    // 기존 storage 객체 삭제
-    if (existing.supabase_path) {
-      await client.storage.from(STORAGE_BUCKET).remove([existing.supabase_path]);
-    }
     const { error: updateError } = await client
       .from('photos')
       .update({
