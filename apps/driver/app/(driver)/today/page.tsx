@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { DriverShell } from '../_layout/driver-shell';
+import { BatchTable } from './batch-table';
 import { EmptyState } from './empty-state';
 import { OrderCard } from './order-card';
 
@@ -127,15 +128,16 @@ export default async function TodayPage(props: {
             </div>
           )
         ) : activeTab === 'batch' ? (
-          <Card>
-            <CardContent className="space-y-2 py-6 text-center text-sm">
-              <p className="font-semibold">일괄 처리 (R8 예정)</p>
-              <p className="text-muted-foreground">
-                현장에서 입력이 어려운 경우 하루 끝에 몰아서 결과를 입력하는 모드.
-                현재는 실시간 탭에서 각 카드 클릭으로 처리해 주세요.
-              </p>
-            </CardContent>
-          </Card>
+          <BatchTable
+            orders={orders.map((o) => ({
+              order_id: o.order_id ?? '',
+              region: o.region ?? '-',
+              tv: o.tv ?? '-',
+              status: o.status ?? '',
+              pre_call_done: o.pre_call_done ?? false,
+              photo_count: o.photo_count ?? 0,
+            }))}
+          />
         ) : (
           <Card>
             <CardContent className="space-y-3 py-6 text-center text-sm">
