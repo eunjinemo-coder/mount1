@@ -41,6 +41,12 @@ export async function signInWithUsername(args: {
   });
 
   if (error) {
+    console.error('[signInWithUsername] supabase error:', {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+      name: error.name,
+    });
     return {
       ok: false,
       error: '아이디 또는 비밀번호가 올바르지 않습니다.',

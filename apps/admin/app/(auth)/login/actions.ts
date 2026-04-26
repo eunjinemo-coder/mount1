@@ -34,7 +34,8 @@ export async function adminLoginAction(formData: FormData): Promise<SignInResult
       userType: 'admin',
       adminRoleHint: adminRole,
     });
-  } catch {
+  } catch (e) {
+    console.error('[adminLoginAction] thrown:', e);
     return {
       ok: false,
       error: '로그인 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.',
