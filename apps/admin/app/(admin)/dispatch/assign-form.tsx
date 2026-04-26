@@ -2,10 +2,14 @@
 
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import { cn } from '@mount/ui';
-import { UserCheck } from 'lucide-react';
+import { Sparkles, UserCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactElement } from 'react';
-import { assignOrderAction } from './actions';
+import {
+  assignOrderAction,
+  recommendTechniciansAction,
+  type RecommendedTechnician,
+} from './actions';
 
 export interface DispatchOrder {
   id: string;
@@ -44,10 +48,27 @@ export function AssignForm(props: AssignFormProps): ReactElement {
   const router = useRouter();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<RecommendedTechnician[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isRecommending, startRecommend] = useTransition();
 
   const canSubmit = !!selectedOrderId && !!selectedTechId && !isPending;
+
+  const handleSelectOrder = (orderId: string): void => {
+    setSelectedOrderId(orderId);
+    setSelectedTechId(null);
+    setRecommendations([]);
+    setError(null);
+    startRecommend(async () => {
+      const result = await recommendTechniciansAction(orderId);
+      if (result.ok && result.recommendations) {
+        setRecommendations(result.recommendations);
+      } else if (result.error) {
+        setError(result.error);
+      }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -73,10 +94,7 @@ export function AssignForm(props: AssignFormProps): ReactElement {
                           'hover:bg-muted/40 w-full rounded-md border px-3 py-2 text-left transition-colors',
                           isSelected ? 'border-primary bg-primary/5' : 'border-border',
                         )}
-                        onClick={() => {
-                          setSelectedOrderId(order.id);
-                          setError(null);
-                        }}
+                        onClick={() => handleSelectOrder(order.id)}
                         type="button"
                       >
                         <div className="flex items-center justify-between text-sm">
@@ -128,6 +146,64 @@ export function AssignForm(props: AssignFormProps): ReactElement {
           </CardContent>
         </Card>
       </div>
+
+      {selectedOrderId ? (
+        <Card className="border-primary/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="text-primary size-4" />
+              추천 기사 {isRecommending ? '(분석 중…)' : `(상위 ${recommendations.length}명)`}
+            </CardTitle>
+            <p className="text-muted-foreground text-xs">
+              점수 = 거리(0~30) + 등급(0~20) + 부하(0~25) + 선호지역(0~10) + 공정성(0~15)
+            </p>
+          </CardHeader>
+          <CardContent>
+            {isRecommending ? (
+              <p className="text-muted-foreground text-sm">기사 후보 평가 중…</p>
+            ) : recommendations.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                추천 가능한 기사가 없습니다 (모두 일일 한도 초과 또는 비활성).
+              </p>
+            ) : (
+              <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {recommendations.map((rec) => {
+                  const isSelected = selectedTechId === rec.technician_id;
+                  const distanceLabel =
+                    rec.distance_km == null ? '위치 불명' : `${rec.distance_km.toFixed(1)}km`;
+                  return (
+                    <li key={rec.technician_id}>
+                      <button
+                        className={cn(
+                          'hover:bg-muted/40 w-full rounded-md border px-3 py-2 text-left transition-colors',
+                          isSelected ? 'border-primary bg-primary/5' : 'border-border',
+                        )}
+                        onClick={() => {
+                          setSelectedTechId(rec.technician_id);
+                          setError(null);
+                        }}
+                        type="button"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{rec.display_name}</span>
+                          <Badge>{Math.round(rec.score)}점</Badge>
+                        </div>
+                        <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+                          <span>{GRADE_LABEL[rec.grade] ?? rec.grade}</span>
+                          <span>📍 {distanceLabel}</span>
+                          <span>오늘 {rec.today_load}건</span>
+                          <span>주간 {rec.weekly_load}건</span>
+                          {rec.preferred_match ? <span className="text-primary">선호지역</span> : null}
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {error ? (
         <div className="border-destructive/30 bg-destructive/10 rounded-md border px-3 py-2">
