@@ -13,11 +13,14 @@ cd D:\MOUNT1
 git pull
 supabase db push
 ```
-- 적용 대상 (4개):
+- 적용 대상 (7개):
   - `0005_rpc.sql` (RPC 6종)
   - `0006_security_fix.sql` (auditor 권한 분리 + trigger search_path + view security_invoker)
   - `0007_security_round2.sql` (technicians cs/ops/auditor read 정책)
   - `0008_storage_rls.sql` (Storage 버킷 RLS — photos-hot · signatures · cls-reports-draft)
+  - `0009_call_outcome_extend.sql` (call_outcome 5→7 + customer_postponed/cancelled)
+  - `0010_realtime_publication.sql` (orders/installations/issues → supabase_realtime publication)
+  - `0011_pii_decrypt.sql` (PII 복호화 helper + rpc_technician_get_customer_phone — Vault 키 필요, #21 참조)
 - 결과: dev DB 에 RPC 함수 + 보안 정책 + Storage 정책 활성화
 - 확인: 에러 없이 "Finished supabase db push" 메시지
 
@@ -237,6 +240,27 @@ select id::text, id,
 ### 16. 의존성 취약점 모니터링
 - `pnpm audit` 매주 1회 확인
 - 현재 transitive moderate 2건 (postcss, uuid) — Sentry/Next 패치 릴리즈 대기
+
+### 21. Supabase Vault — PII 암호화 키 등록 (필수, 0011 마이그레이션 사전 조건)
+- URL: https://supabase.com/dashboard/project/nzphbeookxotdjzishqn/settings/vault
+- 메뉴: Project Settings → Vault → "New secret"
+- 입력:
+  - **Name**: `pii_key`
+  - **Value**: 32바이트 강한 base64 키 — 터미널에서 1회 생성:
+    ```bash
+    openssl rand -base64 32
+    # 또는 PowerShell: [Convert]::ToBase64String((New-Object byte[] 32 | ForEach-Object { Get-Random -Maximum 256 }))
+    ```
+  - 결과 예시: `Yn4f3K2L9aQ8Wp1mZ5xV6tR0sH3jB7eU+8oI4nC2dGk=`
+  - **⚠️ LastPass / 1Password 등에 저장** — 키를 잃으면 모든 PII 복호화 불가
+- prod 등록도 동일 (단, dev/prod 동일 키여야 데이터 호환 — 환경별 분리 운영 시 export/import 시 별도 처리)
+- 검증:
+  ```sql
+  -- Vault 등록 확인
+  select name from vault.decrypted_secrets where name = 'pii_key';
+  -- 함수 호출 (다른 SECURITY DEFINER 함수가 호출할 때만 작동)
+  select length(encrypt_pii('test'));   -- 60+ bytea bytes 나오면 성공
+  ```
 
 ### 17. dev DB 도 Pro 전환 검토
 - 결정: Free 유지 vs Pro ($25/월 추가) — pg_cron stub 작동 위해 Pro 권장

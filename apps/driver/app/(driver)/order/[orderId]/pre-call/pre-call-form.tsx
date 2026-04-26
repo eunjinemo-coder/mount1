@@ -1,10 +1,10 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
-import { Phone } from 'lucide-react';
+import { Phone, PhoneCall } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactElement } from 'react';
-import { logPreCallAction, type CallOutcome } from './actions';
+import { getCustomerPhoneAction, logPreCallAction, type CallOutcome } from './actions';
 
 export interface PreCallFormProps {
   orderId: string;
@@ -38,6 +38,20 @@ export function PreCallForm(props: PreCallFormProps): ReactElement {
   const [outcome, setOutcome] = useState<CallOutcome>('answered');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isDialing, startDial] = useTransition();
+
+  const handleDial = (): void => {
+    setError(null);
+    startDial(async () => {
+      const result = await getCustomerPhoneAction(props.orderId);
+      if (result.ok && result.phone) {
+        // tel: 딥링크 — iOS/Android 기본 다이얼러 호출. 평문은 메모리에서만 사용 후 폐기.
+        window.location.href = `tel:${result.phone.replace(/[^\d+]/g, '')}`;
+      } else if (result.error) {
+        setError(result.error);
+      }
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -48,10 +62,20 @@ export function PreCallForm(props: PreCallFormProps): ReactElement {
             고객 연락처
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <p className="text-base">***-****-{props.phoneTail4 || '????'}</p>
-          <p className="text-muted-foreground mt-2 text-xs">
-            전체 번호는 본사 안내 채널을 통해서만 확인 가능합니다 (PII 보호).
+          <Button
+            className="w-full"
+            disabled={isDialing}
+            onClick={handleDial}
+            type="button"
+            variant="outline"
+          >
+            <PhoneCall className="mr-2 size-4" />
+            {isDialing ? '연결 중…' : '전화 걸기'}
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            버튼을 누르는 즉시 단말기 다이얼러로 연결됩니다. 통화 후 아래 결과를 저장해 주세요.
           </p>
         </CardContent>
       </Card>

@@ -40,6 +40,18 @@ export async function submitCancelReportAction(args: {
 
   const client = await getServerClient();
 
+  // 사진 자동 첨부: caller 가 명시 안 했으면 본 order 의 본인 업로드 사진 모두 자동 link.
+  // RLS 가 본인 사진만 select 하도록 보장 — 권한 우회 없음.
+  let photoIds = args.photoIds ?? [];
+  if (photoIds.length === 0) {
+    const { data: photoRows } = await client
+      .from('photos')
+      .select('id')
+      .eq('order_id', args.orderId)
+      .eq('technician_id', session.technicianId);
+    photoIds = (photoRows ?? []).map((row) => row.id);
+  }
+
   // RLS 정책 cancel_insert_technician: technician_id = public.technician_id() 검증.
   // session.technicianId 는 JWT app_metadata.technician_id 에서 추출된 값으로 일치.
   const placeholderSignature =
@@ -50,7 +62,7 @@ export async function submitCancelReportAction(args: {
     category_primary: args.category,
     sub_reasons: [],
     situation_note: args.situationNote,
-    photo_ids: args.photoIds ?? [],
+    photo_ids: photoIds,
     signature_image_url: placeholderSignature,
     coupang_transfer_status: 'pending',
   });
