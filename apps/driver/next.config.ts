@@ -31,14 +31,16 @@ const nextConfig: NextConfig = {
             // CSP — P1-S3 (3차 보안 검증) 해소
             // Supabase · Sentry · PostHog · Kakao Maps 호스트 허용. 'unsafe-inline' 은 Next.js
             // hydration 데이터 + Tailwind CSS 인라인을 위해 필요 (Phase 2 nonce 기반으로 강화).
+            // 'unsafe-eval' 은 dev 모드에서만 허용 (React dev runtime 요구) — prod 는 제거하여 보안 강화.
+            // Sentry region prefix(us/de) 은 wildcard 1단계 매칭 한계로 명시 추가.
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://browser.sentry-cdn.com https://*.kakao.com https://dapi.kakao.com",
+              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''} https://*.posthog.com https://browser.sentry-cdn.com https://*.kakao.com https://dapi.kakao.com`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.supabase.co https://*.posthog.com",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.ingest.sentry.io https://dapi.kakao.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://dapi.kakao.com",
               "media-src 'self' blob:",
               "worker-src 'self' blob:",
               "frame-ancestors 'none'",

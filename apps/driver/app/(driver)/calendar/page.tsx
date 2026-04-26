@@ -16,7 +16,7 @@ export default async function CalendarPage(): Promise<ReactElement> {
   }
 
   return (
-    <DriverShell activeTab="calendar">
+    <DriverShell>
       <div className="mx-auto max-w-screen-md space-y-4 px-4 py-6">
         <h1 className="text-2xl font-bold">예약 캘린더</h1>
         <Card>

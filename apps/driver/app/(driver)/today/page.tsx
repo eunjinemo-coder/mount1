@@ -72,7 +72,7 @@ export default async function TodayPage(props: {
   const upcomingCount = orders.length - completedCount - inProgressCount;
 
   return (
-    <DriverShell activeTab="home" technicianName={technicianName}>
+    <DriverShell technicianName={technicianName}>
       <div className="mx-auto max-w-screen-md px-4 py-6">
         <header className="mb-4 flex items-baseline justify-between">
           <h1 className="text-2xl font-bold">오늘의 시공</h1>

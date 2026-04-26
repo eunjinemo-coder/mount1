@@ -37,46 +37,117 @@ pnpm --filter @mount/db db:types:dev
 ### 4. 첫 관리자 계정 발급 (Dashboard SQL Editor)
 URL: https://supabase.com/dashboard/project/nzphbeookxotdjzishqn/sql/new
 
+> ⚠️ **중요**: auth.users 직접 INSERT 만으로는 로그인 안 됨.
+> `aud='authenticated'`, `auth.identities` 매핑, NOT NULL 컬럼 (confirmation_token 등) 빈 문자열 채움 모두 필요.
+> 아래 단일 트랜잭션 블록은 그 모두를 한 번에 처리.
+
 ```sql
--- 본인(은진님) super_admin 계정 발급
--- ⚠️ 'STRONG_PASSWORD_HERE' 부분을 12자+ 강한 비밀번호로 교체 (대·소·숫자·특수문자 1자 이상)
--- ⚠️ 실행 후 비밀번호는 LastPass/1Password 같은 곳에 저장 (이후 평문 확인 불가)
+-- ============================================================================
+-- super_admin 계정 발급 (트랜잭션 단일 블록)
+-- ⚠️ 'STRONG_PASSWORD_HERE' 자리만 12자+ 강한 비밀번호로 교체 (대·소·숫자·특수문자)
+-- ⚠️ 실행 후 비밀번호는 LastPass/1Password 등에 저장 (이후 평문 확인 불가)
+-- ============================================================================
 
--- (1) auth.users 에 가짜 email 로 계정 생성
-insert into auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, role)
-values (
-  gen_random_uuid(),
-  'super_admin_eunjin@internal.mountpartners.cloud',
-  crypt('STRONG_PASSWORD_HERE', gen_salt('bf')),
-  now(),
-  '{"display_name": "은진"}'::jsonb,
-  'authenticated'
-)
-returning id;
--- 반환된 id 를 다음 INSERT 에 붙여넣기
+do $$
+declare
+  v_user_id uuid := gen_random_uuid();
+  v_email text := 'super_admin_eunjin@internal.mountpartners.cloud';
+  v_password text := 'STRONG_PASSWORD_HERE';
+  v_display_name text := '은진';
+begin
+  -- (1) auth.users — 모든 NOT NULL/필수 컬럼 명시
+  insert into auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at,
+    confirmation_token, recovery_token,
+    email_change_token_new, email_change, email_change_token_current,
+    phone_change, phone_change_token, reauthentication_token
+  ) values (
+    v_user_id,
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    v_email,
+    crypt(v_password, gen_salt('bf')),
+    now(),
+    '{"provider": "email", "providers": ["email"]}'::jsonb,
+    jsonb_build_object('display_name', v_display_name),
+    now(), now(),
+    '', '', '', '', '', '', '', ''
+  );
 
--- (2) admin_users 에 매핑 (위 id 사용)
-insert into admin_users (auth_user_id, display_name, email, role, status)
-values (
-  '여기에-위에서-반환된-id-붙여넣기',
-  '은진',
-  'super_admin_eunjin@internal.mountpartners.cloud',
-  'super_admin',
-  'active'
-);
+  -- (2) auth.identities — password 로그인은 identities 매핑 필수
+  insert into auth.identities (
+    provider_id, user_id, identity_data, provider,
+    last_sign_in_at, created_at, updated_at
+  ) values (
+    v_user_id::text,
+    v_user_id,
+    jsonb_build_object(
+      'sub', v_user_id::text,
+      'email', v_email,
+      'email_verified', true,
+      'phone_verified', false
+    ),
+    'email',
+    now(), now(), now()
+  );
+
+  -- (3) admin_users 매핑 (Hook 이 JWT app_metadata 채우는 lookup 대상)
+  insert into admin_users (auth_user_id, display_name, email, role, status)
+  values (v_user_id, v_display_name, v_email, 'super_admin', 'active');
+
+  raise notice 'super_admin 계정 발급 완료: % (id=%)', v_email, v_user_id;
+end $$;
 ```
 
-확인 방법:
+확인:
 ```sql
-select id, role, status from admin_users where role = 'super_admin';
+select au.id, au.role, au.status, au.display_name,
+       u.email, u.aud, u.email_confirmed_at is not null as confirmed,
+       i.provider, (i.identity_data->>'email_verified')::bool as verified
+  from admin_users au
+  join auth.users u on u.id = au.auth_user_id
+  left join auth.identities i on i.user_id = u.id and i.provider = 'email'
+ where au.role = 'super_admin';
 ```
+→ 1 행 + `aud='authenticated'` + `confirmed=true` + `provider='email'` + `verified=true` 모두 충족이어야 정상.
 
-이후 admin 앱 `/login` 에서:
+이후 admin 앱 `localhost:3001/login` 에서:
 - 역할: 대표
 - 아이디: `eunjin`
 - 비밀번호: 설정한 STRONG_PASSWORD
 
-로 로그인 가능. (현재 로그인 폼이 fake email 패턴 `super_admin_{username}@...` 로 변환)
+로 로그인. (폼 내부에서 fake email `super_admin_{username}@internal.mountpartners.cloud` 로 변환)
+
+---
+
+#### 🔴 이미 NULL aud 로 만든 계정 복구 (위 블록 사용 안 했을 때)
+```sql
+update auth.users
+   set aud = coalesce(aud, 'authenticated'),
+       role = coalesce(role, 'authenticated'),
+       instance_id = coalesce(instance_id, '00000000-0000-0000-0000-000000000000'),
+       confirmation_token = coalesce(confirmation_token, ''),
+       recovery_token = coalesce(recovery_token, ''),
+       email_change_token_new = coalesce(email_change_token_new, ''),
+       email_change = coalesce(email_change, ''),
+       email_change_token_current = coalesce(email_change_token_current, ''),
+       phone_change = coalesce(phone_change, ''),
+       phone_change_token = coalesce(phone_change_token, ''),
+       reauthentication_token = coalesce(reauthentication_token, '')
+ where email = 'super_admin_eunjin@internal.mountpartners.cloud';
+
+-- identities 누락 시 추가
+insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+select id::text, id,
+       jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true, 'phone_verified', false),
+       'email', now(), now(), now()
+  from auth.users
+ where email = 'super_admin_eunjin@internal.mountpartners.cloud'
+   and id not in (select user_id from auth.identities where provider = 'email');
+```
 
 ---
 
@@ -185,8 +256,95 @@ select id, role, status from admin_users where role = 'super_admin';
 - 추가: 매주 일요일 02:00 `supabase db dump` → R2 보관
 
 ### 20. 협력기사 계정 발급
-- 본사 (은진님) 가 admin 앱 `/admin/accounts/new` (R5 작업 후) 에서 발급
-- 또는 SQL Editor 에서 직접 (위 super_admin 발급 패턴 동일, role='technician_xxx' 형식 fake email)
+- 본사 (은진님) 가 admin 앱 `/admin/accounts/new` (R8 이후) 에서 발급
+- 또는 아래 SQL Editor 블록 사용 (super_admin 패턴과 동일 — aud + identities + NOT NULL 컬럼 모두 포함)
+
+```sql
+-- ============================================================================
+-- 협력기사(technician) 계정 발급
+-- ⚠️ 4 변수만 교체: v_username, v_password, v_display_name, v_phone
+-- ⚠️ technicians 테이블에 사전에 row 가 있어야 함 (admin 이 R8 화면에서 등록)
+--    또는 아래 (4) 블록의 주석을 풀어 SQL 으로 직접 등록
+-- ============================================================================
+
+do $$
+declare
+  v_user_id uuid := gen_random_uuid();
+  v_username text := 'kim_minsu';                  -- ← 영문/숫자 32자 이내, 고유
+  v_password text := 'STRONG_PASSWORD_HERE';       -- ← 12자+ 강한 비밀번호
+  v_display_name text := '김민수';                  -- ← 기사 이름
+  v_phone text := '01012345678';                   -- ← E.164 (하이픈 없이) — 알림톡 발송용
+  v_email text := 'technician_' || v_username || '@internal.mountpartners.cloud';
+  v_tech_id uuid;
+begin
+  -- (1) auth.users
+  insert into auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at,
+    confirmation_token, recovery_token,
+    email_change_token_new, email_change, email_change_token_current,
+    phone_change, phone_change_token, reauthentication_token
+  ) values (
+    v_user_id,
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    v_email, crypt(v_password, gen_salt('bf')),
+    now(),
+    '{"provider": "email", "providers": ["email"]}'::jsonb,
+    jsonb_build_object('display_name', v_display_name),
+    now(), now(),
+    '', '', '', '', '', '', '', ''
+  );
+
+  -- (2) auth.identities
+  insert into auth.identities (
+    provider_id, user_id, identity_data, provider,
+    last_sign_in_at, created_at, updated_at
+  ) values (
+    v_user_id::text, v_user_id,
+    jsonb_build_object(
+      'sub', v_user_id::text, 'email', v_email,
+      'email_verified', true, 'phone_verified', false
+    ),
+    'email', now(), now(), now()
+  );
+
+  -- (3) technicians 매핑 (사전 등록된 row 와 연결)
+  update technicians
+     set auth_user_id = v_user_id,
+         status = 'active'
+   where display_name = v_display_name      -- 사전 등록 시 동일한 이름이어야 매칭
+     and auth_user_id is null
+   returning id into v_tech_id;
+
+  if v_tech_id is null then
+    raise exception '사전 등록된 technicians row 없음 — admin /technicians 에서 % 먼저 등록 후 재실행', v_display_name;
+  end if;
+
+  -- (4) 사전 등록 없이 한 번에 만들고 싶으면 위 (3) 대신 아래 사용 (주석 해제)
+  -- insert into technicians (auth_user_id, display_name, phone_e164, status, grade, daily_capacity)
+  -- values (v_user_id, v_display_name, v_phone, 'active', 'C', 5)
+  -- returning id into v_tech_id;
+
+  raise notice 'technician 발급 완료: % (auth_user_id=%, technician_id=%)',
+    v_username, v_user_id, v_tech_id;
+end $$;
+```
+
+확인:
+```sql
+select t.id as technician_id, t.display_name, t.status, t.grade,
+       u.email, u.aud, i.provider
+  from technicians t
+  join auth.users u on u.id = t.auth_user_id
+  left join auth.identities i on i.user_id = u.id and i.provider = 'email'
+ where t.display_name = '김민수';
+```
+
+기사 로그인 (`localhost:3000/login`):
+- 아이디: `kim_minsu`
+- 비밀번호: 설정한 STRONG_PASSWORD
 
 ---
 
