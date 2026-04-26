@@ -4,50 +4,58 @@
 
 ---
 
-## 현재 상태 (2026-04-26 · commit cb55ef8)
+## 현재 상태 (2026-04-26 · commit dbb0ca6)
 
 ```
-git: main @ cb55ef8 (15 commits 누적)
+git: main @ dbb0ca6 (R7 + R8 누적 22+ commits)
 검증: typecheck 6/6 ✓ · lint 6/6 ✓ · build 2/2 ✓
-라우트: driver 14 + admin 9 = 23 라우트 빌드
-와이어프레임 매칭률: 1차 48% → 2차 60% → 3차 78%
-보안 P0: 0건 (수렴 달성)
-시공 lifecycle 8단계: 모두 PASS (login → today → detail → pre-call → start → photos → complete → cancel)
+라우트: driver 14 + admin 11 = 25 라우트
+와이어프레임 매칭률: ~90% (R7=85% → R8 = +5%)
+보안 P0: 0건 · P1: 5건 (백로그)
+시공 lifecycle: 모두 PASS · A02 일괄 + B05 추천 + Realtime + tel: 딥링크 모두 작동 가능
+의존성: 2 moderate (uuid<14 / postcss<8.5.10) — Sentry/Next 패치 릴리즈 대기
 ```
 
 ## 다음 세션 진입 시 1단계 — 은진님 액션 (`_HANDOFF.md` 참조)
 
 ```bash
 cd D:\MOUNT1 && git pull
-supabase db push                           # 0005~0008 4개 마이그레이션 적용
-pnpm --filter @mount/db db:types:dev       # types regenerate
+supabase db push                           # 0005~0012 7개 마이그레이션 적용
+pnpm --filter @mount/db db:types:dev       # types regenerate (RPC 6 + recommend 1 추가)
 ```
 
-추가:
-- Dashboard → Auth → Hooks → Custom Access Token Hook 활성화
-- Dashboard → Storage → photos-hot · signatures · cls-reports-draft 3 버킷 생성
-- 첫 super_admin 계정 발급 SQL (HANDOFF #4)
+추가 (Dashboard 1회):
+- Auth → Hooks → Custom Access Token Hook 활성화
+- Storage → photos-hot · signatures · cls-reports-draft 3 버킷 생성
+- Settings → Vault → `pii_key` secret 등록 (openssl rand -base64 32)
+- SQL Editor → super_admin 발급 (HANDOFF #4 단일 do$$ 블록)
 
-## R7 후보 (다음 라운드 — 매칭률 78% → 85%+ 목표)
+## R8 완료 항목 (이번 라운드)
 
-1. **A02 driver today 3탭** (실시간/일괄/지도) — Kakao Maps SDK 도입
-2. **A04 driver order detail 4탭** (개요/사진/이슈/통화 분리)
-3. **B05 dispatch 추천 점수 알고리즘** (Gini · 거리 · 등급 · 부하 가중치)
-4. **B02 admin today Realtime** (Supabase Realtime 30초 구독)
-5. **tel: 딥링크** (전화번호 복호화 RPC + AES-GCM 서버키)
-6. **관리자 역할 서버 결정** (admin_users.username + RPC)
-7. **A05 결과 7종 확장** (customer_postponed → 분기 + customer_cancelled → A10)
-8. **PWA 아이콘 에셋** (TD-008)
+1. ✅ Admin Realtime (orders/installations/issues postgres_changes 구독 + 60s fallback)
+2. ✅ Driver shell pathname 자동 active tab (BottomNav use client 분리)
+3. ✅ Driver next.config CSP dev/prod 분리 + Sentry region host 보강
+4. ✅ tel: 딥링크 (PII 복호화 RPC + Vault 키 + Driver UI 전화 버튼)
+5. ✅ B05 추천 점수 (Haversine + 등급 + 부하 + 선호 + 공정성)
+6. ✅ A02 일괄 처리 탭 (표 + 다중 통화 일괄 기록)
+7. ✅ Cancel 사진 자동 첨부 (photos 본인 + 본 order 자동 link)
+8. ✅ _HANDOFF SQL 완전판 (super_admin + technician — aud + identities + NOT NULL 토큰)
 
-## 잔존 백로그 (R8+)
+## R9 후보 (다음 세션)
 
-- A07 photos 의 EXIF 추출 + 자동 압축 (WebP)
-- A10 photo_ids 자동 첨부 (cancellation_reports 통합)
-- B03 ETL 업로드 화면 (CSV/XLSX/Sheets/Email)
-- B04 기사 상세 + 신규 발급 화면
-- B07 결제 링크 발송 (PortOne SDK)
-- B11 정산 자동 CSV
+1. **/admin/accounts/new** — 협력기사 등록 + 자동 발급 화면 (super_admin)
+2. **Kakao Maps SDK** — A02 지도 탭 + B06 admin live (외부 key 발급 후)
+3. **A07 EXIF + WebP 자동 압축** — 사진 업로드 시 메타 추출 + lossy 변환
+4. **B03 ETL 업로드 화면** — CSV/XLSX/Sheets/Email 4 모드
+5. **B07 PortOne 결제 링크** — Webhook + 결제 상태 sync
+6. **B11 정산 자동 CSV** — 주간 정산 export
+
+## 잔존 백로그 (R10+)
+
 - 사진 lifecycle (Hot → Warm 30일, R2 이관)
-- pg_cron 본문 (Pro 전환 후)
+- pg_cron 본문 (prod Pro 전환 후 0003_cron 적용)
 - next-pwa Turbopack 호환 (Phase 2)
-- 의존성 transitive 2건 모니터링
+- 관리자 IP whitelist 검증 (Phase 2)
+- E2E 테스트 (Playwright + Vercel Browser)
+- Sentry source map 업로드 (Auth Token 발급 후)
+- Login server action debug log 정리 (P3)

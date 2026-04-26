@@ -115,3 +115,21 @@
 - 2026-04-26 · 의존성 · apps/{driver,admin}/package.json 에 `@supabase/ssr@^0.5.2` 명시 추가 (middleware 직접 import 시 transitive 부족 회피).
 - 2026-04-26 · P1 보류 · P1-S2 (관리자 역할 서버 결정) 은 admin_users.username 컬럼 추가 + 서버 lookup 패턴 필요 — R4 후보 18번. 현재는 클라 드롭다운 유지(임시).
 - 2026-04-26 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 통과. 라우트 변동 없음. 0006_security_fix.sql 은 dev push 대기.
+
+## 2026-04-26 · R8 추천 알고리즘 + Realtime + tel: 딥링크 + 일괄 처리
+
+- 2026-04-26 · CSP fix · admin next.config CSP 의 `'unsafe-eval'` 누락이 React dev runtime(콜스택 재구성·HMR)을 차단하던 이슈 해소 — dev 모드에서만 허용 (`process.env.NODE_ENV !== 'production'` 분기). prod 는 그대로 엄격 유지. driver 도 동일 분리 적용 (admin parity).
+- 2026-04-26 · CSP fix · `connect-src` 에 Sentry region prefix(`*.ingest.us.sentry.io` / `*.ingest.de.sentry.io`) 명시 추가 — CSP wildcard 1단계 매칭 한계 보완 (기존 `*.ingest.sentry.io` 만 있어 `o<id>.ingest.us.sentry.io` envelope 차단됨).
+- 2026-04-26 · login fix · `signInWithUsername` / `adminLoginAction` catch 블록의 swallow → `console.error` 로 표면화 (status/code/message). 디버깅 가시성 확보. P3 백로그 (정식 logger 통합 후 제거).
+- 2026-04-26 · auth 발급 · `_HANDOFF.md` super_admin SQL 을 단일 do$$ 블록으로 완전판 교체 — auth.users INSERT 시 `aud='authenticated'` + `role='authenticated'` + `instance_id` + 6 NOT NULL 토큰 컬럼('') + auth.identities 매핑 (provider='email', email_verified=true) 모두 한 번에. 부분 INSERT 로 인한 "비번은 맞는데 로그인 실패" 함정 영구 차단. 협력기사 발급 SQL(#20) 도 동일 패턴.
+- 2026-04-26 · DB · `0010_realtime_publication.sql` — orders/installations/issues 를 `supabase_realtime` publication 에 멱등 add (pg_publication_tables 체크 + foreach). RLS 그대로 적용되어 권한 없는 row 변경은 발신 안 됨.
+- 2026-04-26 · UI · admin AutoRefresh 30s polling → `supabase.channel().on('postgres_changes')` 구독으로 전환. CHANNEL_ERROR/TIMED_OUT/CLOSED 시 60s polling fallback + status indicator (live/polling/connecting/error). `@mount/db/client` subpath 사용으로 server-only chain 분리(이전 navigation.ts 분리와 동일 패턴).
+- 2026-04-26 · UI · driver-shell 의 activeTab prop 제거 → BottomNav 'use client' 분리 + `usePathname()` 으로 자동 결정. /order/* 진입 시 '홈' 탭 강조, /profile → '설정' 매핑. 호출부 4개 정리(today/settings/calendar/payout).
+- 2026-04-26 · DB 보안 · `0011_pii_decrypt.sql` — pgcrypto pgp_sym_encrypt/decrypt + Supabase Vault 의 `pii_key` 시크릿 사용. helper `pii_key()` 는 SECDEF 함수에서만 호출 가능(direct execute revoked). `rpc_technician_get_customer_phone(uuid)` 는 본인 배차 검증 + audit_events 자동 INSERT(action='pii.phone_decrypted'). 응답은 일회성 — 클라가 저장 안 함.
+- 2026-04-26 · UI · driver pre-call-form 에 '전화 걸기' 버튼 추가 — 클릭 시 server action `getCustomerPhoneAction` → `window.location.href = tel:${phone}` 단말 다이얼러 호출. 평문은 메모리에서만 사용 후 폐기 (state 저장 없음).
+- 2026-04-26 · 자동화 · driver cancel/actions 가 photoIds 미지정 시 photos 테이블에서 본인 + 본 order 사진 자동 fetch → cancel_reports.photo_ids 자동 채움. RLS 가 본인 사진만 select 보장.
+- 2026-04-26 · DB · `0012_recommend.sql` — `haversine_km` immutable helper + `rpc_admin_recommend_technicians(uuid, int)` returns table. 점수 = 거리(0~30, customer.address_lat/lng vs technician.last_known_lat/lng) + 등급(0~20) + 부하(0~25, today_load/daily_max_jobs) + 선호지역(0/10) + 공정성(0~15, weekly_load < 활성 평균). dispatch_admin/super_admin only · stable.
+- 2026-04-26 · UI · admin dispatch/assign-form — 주문 클릭 시 추천 5명 자동 fetch + Sparkles 카드. 점수 Badge + 거리/오늘부하/주간부하/선호지역 표기. 추천 0명 ("모두 한도 초과") edge case 처리. 기존 활성 기사 목록도 그대로 유지(override 가능).
+- 2026-04-26 · UI · driver today/?tab=batch placeholder → 실용 일괄 처리 표 (BatchTable). 컬럼: 선택 | 상태 | 지역·TV | 통화 | 사진 | 진행. 통화 미기록 행만 체크박스 활성. 다중 선택 → batchMarkCallsAction (manual_marked_done 순차 호출 + 부분 성공/실패 카운트).
+- 2026-04-26 · 보안 · 의존성 audit · `pnpm audit --prod` 결과 2 moderate (uuid<14 via @sentry/webpack-plugin · postcss<8.5.10 via next). 둘 다 transitive — Sentry/Next 패치 릴리즈 대기. R10+ 모니터링 항목.
+- 2026-04-26 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 (admin 11 + driver 14 routes) 모두 통과. R8 4 commits 누적: 9bc1dba(Realtime+autoTab+CSP+SQL) + 1324bc6(tel+cancel) + 0c475a1(B05) + dbb0ca6(A02 일괄).
