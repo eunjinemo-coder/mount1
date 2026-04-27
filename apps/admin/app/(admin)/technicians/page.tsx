@@ -1,6 +1,8 @@
 import { getServerClient } from '@mount/db';
-import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
-import { Badge, Card, CardContent } from '@mount/ui';
+import { ForbiddenError, getSession, RedirectError, requireRole } from '@mount/lib';
+import { Badge, Button, Card, CardContent } from '@mount/ui';
+import { UserPlus } from 'lucide-react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
@@ -28,6 +30,9 @@ export default async function TechniciansPage(): Promise<ReactElement> {
     throw error;
   }
 
+  const session = await getSession();
+  const isSuperAdmin = session?.adminRole === 'super_admin';
+
   const client = await getServerClient();
   // PII 최소화 — phone 은 마스킹된 뒷자리 4 만 표시 (auditor 도 같이 노출되지 않도록)
   const { data } = await client
@@ -43,9 +48,19 @@ export default async function TechniciansPage(): Promise<ReactElement> {
   return (
     <AdminShell activeNav="technicians" title="Technicians">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
-        <header>
-          <h2 className="text-2xl font-bold">협력기사</h2>
-          <p className="text-muted-foreground text-sm">총 {technicians.length}명 · 발급·잠금 해제는 R5 추가</p>
+        <header className="flex items-baseline justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">협력기사</h2>
+            <p className="text-muted-foreground text-sm">총 {technicians.length}명</p>
+          </div>
+          {isSuperAdmin ? (
+            <Button asChild>
+              <Link href="/technicians/new">
+                <UserPlus className="mr-2 size-4" />
+                신규 발급
+              </Link>
+            </Button>
+          ) : null}
         </header>
 
         <Card>
