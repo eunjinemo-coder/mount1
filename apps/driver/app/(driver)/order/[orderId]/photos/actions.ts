@@ -31,6 +31,10 @@ export async function uploadPhotoAction(formData: FormData): Promise<UploadResul
   const orderId = String(formData.get('orderId') ?? '');
   const slot = String(formData.get('slot') ?? '');
   const file = formData.get('file');
+  const widthRaw = formData.get('width');
+  const heightRaw = formData.get('height');
+  const width = typeof widthRaw === 'string' && widthRaw ? Number(widthRaw) : null;
+  const height = typeof heightRaw === 'string' && heightRaw ? Number(heightRaw) : null;
 
   if (!UUID_RE.test(orderId)) {
     return { ok: false, error: '잘못된 주문 ID입니다.' };
@@ -91,6 +95,8 @@ export async function uploadPhotoAction(formData: FormData): Promise<UploadResul
         supabase_path: objectPath,
         mime_type: file.type,
         size_bytes: file.size,
+        width: width && width > 0 ? width : null,
+        height: height && height > 0 ? height : null,
         uploaded_at: new Date().toISOString(),
       })
       .eq('id', existing.id);
@@ -106,6 +112,8 @@ export async function uploadPhotoAction(formData: FormData): Promise<UploadResul
       supabase_path: objectPath,
       mime_type: file.type,
       size_bytes: file.size,
+      width: width && width > 0 ? width : null,
+      height: height && height > 0 ? height : null,
     });
     if (insertError) {
       // 업로드된 파일 cleanup

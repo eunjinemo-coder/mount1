@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import { Camera, CheckCircle2, Loader2, Trash2 } from 'lucide-react';
 import { useRef, useState, useTransition, type ReactElement } from 'react';
 import { deletePhotoAction, uploadPhotoAction } from './actions';
+import { compressToWebP } from './image-utils';
 
 export interface PhotoSlotData {
   slot: string;
@@ -47,12 +48,27 @@ function PhotoSlot({ orderId, slot }: { orderId: string; slot: PhotoSlotData }):
     if (!file) return;
     setError(null);
 
-    const formData = new FormData();
-    formData.append('orderId', orderId);
-    formData.append('slot', slot.slot);
-    formData.append('file', file);
-
     startTransition(async () => {
+      // 클라 측 압축 — 4000px 원본 → 1920px WebP (70%+ 대역폭 절감)
+      let toUpload: File = file;
+      let width = 0;
+      let height = 0;
+      try {
+        const result = await compressToWebP(file);
+        toUpload = result.file;
+        width = result.width;
+        height = result.height;
+      } catch {
+        // 압축 실패해도 원본 업로드는 시도
+      }
+
+      const formData = new FormData();
+      formData.append('orderId', orderId);
+      formData.append('slot', slot.slot);
+      formData.append('file', toUpload);
+      if (width > 0) formData.append('width', String(width));
+      if (height > 0) formData.append('height', String(height));
+
       const result = await uploadPhotoAction(formData);
       if (result.ok) {
         setUploaded(true);
