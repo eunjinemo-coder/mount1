@@ -4,15 +4,15 @@
 
 ---
 
-## 현재 상태 (2026-04-26 · commit dbb0ca6)
+## 현재 상태 (2026-04-27 · commit 82a5061)
 
 ```
-git: main @ dbb0ca6 (R7 + R8 누적 22+ commits)
+git: main @ 82a5061 (R7 + R8 + R9 누적 26+ commits)
 검증: typecheck 6/6 ✓ · lint 6/6 ✓ · build 2/2 ✓
-라우트: driver 14 + admin 11 = 25 라우트
-와이어프레임 매칭률: ~90% (R7=85% → R8 = +5%)
+라우트: driver 14 + admin 13 = 27 라우트
+와이어프레임 매칭률: ~95% (R8=90% → R9 = +5%)
 보안 P0: 0건 · P1: 5건 (백로그)
-시공 lifecycle: 모두 PASS · A02 일괄 + B05 추천 + Realtime + tel: 딥링크 모두 작동 가능
+운영 가능 항목: 협력기사 발급 / 정산 CSV / 사진 압축 / 추천 알고리즘 / Realtime / tel 딥링크 / 일괄 처리 / 취소 리포트 전달
 의존성: 2 moderate (uuid<14 / postcss<8.5.10) — Sentry/Next 패치 릴리즈 대기
 ```
 
@@ -41,14 +41,26 @@ pnpm --filter @mount/db db:types:dev       # types regenerate (RPC 6 + recommend
 7. ✅ Cancel 사진 자동 첨부 (photos 본인 + 본 order 자동 link)
 8. ✅ _HANDOFF SQL 완전판 (super_admin + technician — aud + identities + NOT NULL 토큰)
 
-## R9 후보 (다음 세션)
+## R9 완료 항목 (이번 라운드)
 
-1. **/admin/accounts/new** — 협력기사 등록 + 자동 발급 화면 (super_admin)
-2. **Kakao Maps SDK** — A02 지도 탭 + B06 admin live (외부 key 발급 후)
-3. **A07 EXIF + WebP 자동 압축** — 사진 업로드 시 메타 추출 + lossy 변환
-4. **B03 ETL 업로드 화면** — CSV/XLSX/Sheets/Email 4 모드
-5. **B07 PortOne 결제 링크** — Webhook + 결제 상태 sync
-6. **B11 정산 자동 CSV** — 주간 정산 export
+1. ✅ **/admin/technicians/new** — 협력기사 등록 + 자동 발급 (super_admin only)
+   · auth.admin.createUser → identities 자동 매핑 + technicians INSERT 트랜잭션
+   · 12자 강한 임시 비번 자동 생성 + Fisher-Yates 셔플 + 1회 표시 + Copy 버튼
+2. ✅ **B11 정산 자동 CSV** — `/api/payouts/csv` route handler
+   · 기간 프리셋 4개 + custom date · 기사별 옵션 분포 + 전환 건수 · UTF-8 BOM Excel 호환
+3. ✅ **A07 클라이언트 사진 압축** — createImageBitmap + OffscreenCanvas + WebP
+   · 1920px + quality 0.85 · 평균 5MB → 1MB 이하 (대역폭 70%+ 절감)
+   · photos.width/height 메타 자동 채움 · EXIF 추출은 R10 (exifr 의존성)
+4. ✅ **/admin/coupang 취소 리포트 일괄 전달** — pending → transferred_manually 마킹
+   · 다중 선택 + 3 모드 (수기/일일/주간 묶음) · count: 'exact' 검증
+
+## R10 후보 (다음 세션)
+
+1. **Kakao Maps SDK** — A02 지도 탭 + B06 admin live (key 발급 후)
+2. **A07 EXIF 추출** — exifr 추가 + GPS/촬영시간 photos.taken_* 컬럼 채움
+3. **B03 ETL 업로드** — 쿠팡 양식 확정 후 CSV/XLSX import
+4. **B07 PortOne 결제 링크** — Webhook + 결제 상태 sync (가맹점 가입 후)
+5. **/admin/technicians/[id] 상세 + 잠금/등급변경**
 
 ## 잔존 백로그 (R10+)
 

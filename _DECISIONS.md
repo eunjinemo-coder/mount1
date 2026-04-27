@@ -133,3 +133,13 @@
 - 2026-04-26 · UI · driver today/?tab=batch placeholder → 실용 일괄 처리 표 (BatchTable). 컬럼: 선택 | 상태 | 지역·TV | 통화 | 사진 | 진행. 통화 미기록 행만 체크박스 활성. 다중 선택 → batchMarkCallsAction (manual_marked_done 순차 호출 + 부분 성공/실패 카운트).
 - 2026-04-26 · 보안 · 의존성 audit · `pnpm audit --prod` 결과 2 moderate (uuid<14 via @sentry/webpack-plugin · postcss<8.5.10 via next). 둘 다 transitive — Sentry/Next 패치 릴리즈 대기. R10+ 모니터링 항목.
 - 2026-04-26 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 (admin 11 + driver 14 routes) 모두 통과. R8 4 commits 누적: 9bc1dba(Realtime+autoTab+CSP+SQL) + 1324bc6(tel+cancel) + 0c475a1(B05) + dbb0ca6(A02 일괄).
+
+## 2026-04-27 · R9 운영 도구 라운드
+
+- 2026-04-27 · admin · `/admin/technicians/new` super_admin 전용 발급 화면 — `auth.admin.createUser` (service role) 사용으로 identities 매핑 자동 (직접 SQL INSERT 함정 회피). technicians INSERT 실패 시 createdUser 자동 rollback. 12자 강한 임시 비밀번호 자동 생성 (대·소·숫자·특수 각 1자+ 보장 + Fisher-Yates 셔플) + UI 에서 1회만 표시 + Copy 버튼 (Clipboard API). technicians 목록에 super_admin 일 때만 "신규 발급" 버튼 노출.
+- 2026-04-27 · admin · `/api/payouts/csv` route handler 도입 — `getSession()` 세션 + ALLOWED_ROLES Set 화이트리스트 (super_admin/cs_admin/ops_admin). orders 완료 상태 4종 + status_changed_at 범위 + technicians 조인. 기사별 Map 집계 (옵션 A/B/C 분리 + conversion 카운트). UTF-8 BOM (`'﻿'` concat) + Excel 호환 한글 헤더. Content-Disposition attachment + 파일명에 기간 포함.
+- 2026-04-27 · admin UI · `/admin/payouts` 의 PayoutCsvForm 'use client' 컴포넌트 — 프리셋 4개 (이번주/지난주/이번달/지난달, ISO week 월요일 시작) + custom date input. 종료일은 자동으로 23:59:59 부착. asChild Button + a download 로 server route 직접 호출.
+- 2026-04-27 · driver · `compressToWebP(File)` image-utils 유틸 — `createImageBitmap` + `OffscreenCanvas` (없으면 HTMLCanvasElement fallback) + `convertToBlob({ type: 'image/webp', quality: 0.85 })`. 긴 변 1920px 까지 축소 + 이미 WebP+1.5MB 미만이면 변환 skip + 변환 결과가 원본보다 크면 원본 유지 (헤더 오버헤드 회피) + 미지원 환경 자동 fallback. photo-grid onFileChange 에 통합 → FormData 에 width/height 도 함께 전송. uploadPhotoAction 에서 photos.width/height 메타 자동 채움.
+- 2026-04-27 · admin · `/admin/coupang` 취소 리포트 일괄 전달 마킹 화면. `markTransferredAction(reportIds, mode)` — UUID 검증 + status='pending' 만 update (이중 마킹 방지) + count: 'exact'. TransferTable 'use client' 표 — 카테고리 한글 라벨 + 3 모드 버튼 (수기/일일/주간). cancellation_reports + technicians 조인 fetch.
+- 2026-04-27 · 검증 · typecheck 6/6 · lint 6/6 · build 2/2 (admin 13 + driver 14 routes) 모두 통과. R9 4 commits 누적: 1fea937(/technicians/new) + 9f96d4d(payouts CSV) + 53ff42e(image compression) + 82a5061(coupang transfer).
+- 2026-04-27 · 와이어프레임 매칭률 · ~90% → ~95% (R9 +5%). D-Day 운영 가능 항목: 협력기사 발급 + 정산 CSV + 사진 압축 + 추천 알고리즘 + Realtime + tel 딥링크 + 일괄 처리 + 취소 리포트 전달.
