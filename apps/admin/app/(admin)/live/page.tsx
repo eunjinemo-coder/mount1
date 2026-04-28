@@ -16,16 +16,16 @@ export default async function LivePage(): Promise<ReactElement> {
   }
 
   return (
-    <AdminShell activeNav="live" title="Live">
+    <AdminShell activeNav="live" title="실시간 현황판">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <h2 className="text-2xl font-bold">실시간 현황 (지도)</h2>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">R5 작업 예정</CardTitle>
+            <CardTitle className="text-base">준비 중</CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground text-sm leading-6">
-            Kakao Maps + 기사 마커 (last_known_lat/lng) + 주문 핀 + Realtime 구독은 다음 라운드(R5)에서
-            구현 예정입니다.
+            지도 위에서 기사 위치와 시공 핀을 실시간으로 보여드릴 예정입니다.
+            지도 키 발급 후 곧 연결돼요.
           </CardContent>
         </Card>
       </div>

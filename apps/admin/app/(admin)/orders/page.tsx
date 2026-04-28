@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
 
-export const metadata = { title: 'Orders' };
+export const metadata = { title: '주문 관리' };
 
 const STATUS_LABEL: Record<string, string> = {
   received: '접수',
@@ -105,7 +105,7 @@ export default async function OrdersPage(props: {
   };
 
   return (
-    <AdminShell activeNav="orders" title="Orders">
+    <AdminShell activeNav="orders" title="주문 관리">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header className="flex items-baseline justify-between">
           <h2 className="text-2xl font-bold">전체 주문</h2>

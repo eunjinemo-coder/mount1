@@ -28,20 +28,20 @@ export interface AdminShellProps {
 }
 
 const NAV = [
-  { id: 'today', label: 'Today', href: '/today', icon: Home },
-  { id: 'orders', label: 'Orders', href: '/orders', icon: Package },
-  { id: 'technicians', label: 'Techs', href: '/technicians', icon: Wrench },
-  { id: 'dispatch', label: 'Dispatch', href: '/dispatch', icon: Users },
-  { id: 'live', label: 'Live', href: '/live', icon: MapPin },
-  { id: 'payouts', label: 'Pay', href: '/payouts', icon: CreditCard },
-  { id: 'coupang', label: 'Cpng', href: '/coupang', icon: Coffee },
+  { id: 'today', label: '오늘', href: '/today', icon: Home },
+  { id: 'orders', label: '주문', href: '/orders', icon: Package },
+  { id: 'technicians', label: '기사', href: '/technicians', icon: Wrench },
+  { id: 'dispatch', label: '배차', href: '/dispatch', icon: Users },
+  { id: 'live', label: '실시간', href: '/live', icon: MapPin },
+  { id: 'payouts', label: '정산', href: '/payouts', icon: CreditCard },
+  { id: 'coupang', label: '쿠팡', href: '/coupang', icon: Coffee },
 ] as const;
 
 export function AdminShell(props: AdminShellProps): ReactElement {
   return (
     <div className="bg-background flex min-h-dvh">
       <aside className="bg-card sticky top-0 hidden h-dvh w-44 shrink-0 border-r md:flex md:flex-col">
-        <div className="flex h-14 items-center px-4 font-semibold">🛠 MountPartners</div>
+        <div className="flex h-14 items-center px-4 font-semibold">🛠 마운트파트너스</div>
         <nav className="flex-1 space-y-1 p-2">
           {NAV.map((item) => {
             const Icon = item.icon;
@@ -69,7 +69,7 @@ export function AdminShell(props: AdminShellProps): ReactElement {
       <div className="flex flex-1 flex-col">
         <header className="bg-background sticky top-0 z-40 flex h-14 items-center justify-between border-b px-6">
           <div className="flex items-center gap-3">
-            <span className="font-semibold md:hidden">🛠 MountPartners</span>
+            <span className="font-semibold md:hidden">🛠 마운트파트너스</span>
             {props.title ? <h1 className="text-foreground text-base">{props.title}</h1> : null}
           </div>
           <div className="text-muted-foreground flex items-center gap-4 text-sm">

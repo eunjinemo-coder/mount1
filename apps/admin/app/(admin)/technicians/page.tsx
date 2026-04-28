@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
 
-export const metadata = { title: 'Technicians' };
+export const metadata = { title: '협력기사' };
 
 const GRADE_LABEL: Record<string, string> = {
   gold: '골드',
@@ -46,7 +46,7 @@ export default async function TechniciansPage(): Promise<ReactElement> {
   }));
 
   return (
-    <AdminShell activeNav="technicians" title="Technicians">
+    <AdminShell activeNav="technicians" title="협력기사">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header className="flex items-baseline justify-between">
           <div>

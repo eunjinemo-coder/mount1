@@ -5,7 +5,7 @@ import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
 import { AssignForm } from './assign-form';
 
-export const metadata = { title: '배차 콘솔' };
+export const metadata = { title: '배차 관리' };
 
 export default async function DispatchPage(): Promise<ReactElement> {
   try {
@@ -47,13 +47,13 @@ export default async function DispatchPage(): Promise<ReactElement> {
   }));
 
   return (
-    <AdminShell activeNav="dispatch" notificationCount={orders.length} title="Dispatch">
+    <AdminShell activeNav="dispatch" notificationCount={orders.length} title="배차 관리">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header className="flex items-baseline justify-between">
           <div>
-            <h2 className="text-2xl font-bold">배차 콘솔</h2>
+            <h2 className="text-2xl font-bold">배차 관리</h2>
             <p className="text-muted-foreground text-sm">
-              미배차 {orders.length}건 · 활성 기사 {technicians.length}명
+              아직 기사가 정해지지 않은 주문 {orders.length}건 · 시공 가능 기사 {technicians.length}명
             </p>
           </div>
         </header>

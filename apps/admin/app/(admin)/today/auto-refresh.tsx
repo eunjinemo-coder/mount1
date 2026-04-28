@@ -68,12 +68,12 @@ export function AutoRefresh(props: AutoRefreshProps): ReactElement {
     status === 'live' ? 'bg-success' : status === 'polling' ? 'bg-warning' : 'bg-muted-foreground';
   const label =
     status === 'live'
-      ? '실시간 연결'
+      ? '실시간 자동 갱신'
       : status === 'polling'
-        ? `폴링 ${Math.round(fallbackIntervalMs / 1000)}초`
+        ? `${Math.round(fallbackIntervalMs / 1000)}초 간격 자동 갱신`
         : status === 'connecting'
           ? '연결 중'
-          : '재연결 중';
+          : '다시 연결 중';
 
   return (
     <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">

@@ -120,7 +120,7 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
   const technicianMax = technicianStats[0]?.count ?? 0;
 
   return (
-    <AdminShell activeNav="today" notificationCount={unassignedCount} title="Today">
+    <AdminShell activeNav="today" notificationCount={unassignedCount} title="오늘">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header className="flex items-baseline justify-between">
           <h2 className="text-2xl font-bold">오늘 운영 현황</h2>

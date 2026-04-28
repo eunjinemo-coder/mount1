@@ -39,18 +39,18 @@ export default async function CoupangPage(): Promise<ReactElement> {
   });
 
   return (
-    <AdminShell activeNav="coupang" title="Coupang">
+    <AdminShell activeNav="coupang" title="쿠팡 정산">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
         <header>
-          <h2 className="text-2xl font-bold">쿠팡 ETL · 취소 리포트</h2>
+          <h2 className="text-2xl font-bold">쿠팡 정산 · 취소 보고</h2>
           <p className="text-muted-foreground text-sm">
-            취소 리포트 일괄 전달 + ETL 업로드 (CSV/XLSX 양식 정의 후 R10).
+            현장 취소 보고서를 쿠팡 측에 일괄 전달하고, 주문 데이터를 가져옵니다.
           </p>
         </header>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">미전달 취소 리포트</CardTitle>
+            <CardTitle className="text-base">전달 대기 중인 취소 보고서</CardTitle>
           </CardHeader>
           <CardContent>
             <TransferTable reports={reports} />
@@ -59,11 +59,11 @@ export default async function CoupangPage(): Promise<ReactElement> {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">쿠팡 ETL 업로드 (R10 예정)</CardTitle>
+            <CardTitle className="text-base">쿠팡 주문 가져오기 (준비 중)</CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground text-sm leading-6">
-            CSV / XLSX / Sheets / Email 4 모드. 쿠팡 본사로부터 양식 확정 후 구현. 현재는 ETL
-            스테이징 테이블이 ERD 에 정의만 되어 있으며 실제 import 흐름은 다음 라운드에서 작업.
+            엑셀(CSV/XLSX) 파일 업로드 또는 메일 자동 가져오기를 곧 지원합니다.
+            쿠팡 본사 양식 확정 후 연결됩니다.
           </CardContent>
         </Card>
       </div>

@@ -5,7 +5,7 @@ import { notFound, redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { CancelForm } from './cancel-form';
 
-export const metadata = { title: '취소 리포트' };
+export const metadata = { title: '취소 보고' };
 
 export default async function CancelPage(props: {
   params: Promise<{ orderId: string }>;
@@ -44,7 +44,7 @@ export default async function CancelPage(props: {
           <Link href={`/order/${orderId}`} className="text-muted-foreground text-sm">
             ← 주문 상세로
           </Link>
-          <h1 className="mt-2 text-2xl font-bold">취소 리포트</h1>
+          <h1 className="mt-2 text-2xl font-bold">취소 보고</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             현장에서 시공이 불가능한 사유를 정확히 기록해 주세요. 본사가 쿠팡에 전달합니다.
           </p>

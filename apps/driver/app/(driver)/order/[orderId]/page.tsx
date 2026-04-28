@@ -416,7 +416,7 @@ function ActionButtons({ orderId, status }: { orderId: string; status: string })
           <Link href={`/order/${orderId}/start`}>시공 시작</Link>
         </Button>
         <Button asChild className="w-full" size="lg" variant="outline">
-          <Link href={`/order/${orderId}/cancel`}>취소 리포트</Link>
+          <Link href={`/order/${orderId}/cancel`}>취소 보고</Link>
         </Button>
       </div>
     );

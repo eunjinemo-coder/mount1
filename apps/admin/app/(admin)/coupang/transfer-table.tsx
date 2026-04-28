@@ -72,8 +72,8 @@ export function TransferTable(props: { reports: PendingReport[] }): ReactElement
   if (props.reports.length === 0) {
     return (
       <div className="rounded-md border p-6 text-center text-sm">
-        <p className="font-semibold">미전달 취소 리포트 없음</p>
-        <p className="text-muted-foreground mt-1">모든 리포트가 쿠팡 측에 전달 완료되었습니다.</p>
+        <p className="font-semibold">전달 대기 중인 취소 보고가 없어요</p>
+        <p className="text-muted-foreground mt-1">모든 보고가 쿠팡 측에 전달 완료되었습니다.</p>
       </div>
     );
   }

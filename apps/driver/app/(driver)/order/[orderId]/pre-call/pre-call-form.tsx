@@ -29,7 +29,7 @@ const OUTCOME_OPTIONS: { value: CallOutcome; label: string; description: string 
   {
     value: 'customer_cancelled',
     label: '고객 취소 요청',
-    description: '고객이 전화로 취소 의사 표현. 저장 후 자동으로 취소 리포트 화면 안내.',
+    description: '고객이 전화로 취소를 요청. 저장하면 취소 보고 화면으로 자동 이동돼요.',
   },
 ];
 

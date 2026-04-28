@@ -71,7 +71,7 @@ export async function submitCancelReportAction(args: {
     // 내부 아키텍처 정보(RLS·RPC·R5 등) 사용자 노출 금지.
     return {
       ok: false,
-      error: '취소 리포트 저장에 실패했어요. 본사 카카오톡 채널로 즉시 보고해 주세요.',
+      error: '취소 보고 저장에 실패했어요. 본사 카카오톡 채널로 즉시 알려 주세요.',
     };
   }
 

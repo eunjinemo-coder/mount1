@@ -152,7 +152,7 @@ export function CancelForm(props: CancelFormProps): ReactElement {
         size="lg"
         variant="destructive"
       >
-        {isPending ? '제출 중…' : '취소 리포트 제출'}
+        {isPending ? '제출 중…' : '취소 보고 제출'}
       </Button>
     </div>
   );

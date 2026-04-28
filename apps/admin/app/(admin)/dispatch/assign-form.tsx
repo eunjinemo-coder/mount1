@@ -75,11 +75,11 @@ export function AssignForm(props: AssignFormProps): ReactElement {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">미배차 주문 ({props.orders.length})</CardTitle>
+            <CardTitle className="text-base">기사 배정 대기 주문 ({props.orders.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {props.orders.length === 0 ? (
-              <p className="text-muted-foreground text-sm">미배차 주문이 없습니다.</p>
+              <p className="text-muted-foreground text-sm">기사 배정이 필요한 주문이 없어요.</p>
             ) : (
               <ul className="space-y-2">
                 {props.orders.map((order) => {
@@ -113,11 +113,11 @@ export function AssignForm(props: AssignFormProps): ReactElement {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">활성 기사 ({props.technicians.length})</CardTitle>
+            <CardTitle className="text-base">시공 가능 기사 ({props.technicians.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {props.technicians.length === 0 ? (
-              <p className="text-muted-foreground text-sm">활성 기사가 없습니다.</p>
+              <p className="text-muted-foreground text-sm">현재 시공 가능한 기사가 없어요.</p>
             ) : (
               <ul className="space-y-2">
                 {props.technicians.map((tech) => {
@@ -155,15 +155,15 @@ export function AssignForm(props: AssignFormProps): ReactElement {
               추천 기사 {isRecommending ? '(분석 중…)' : `(상위 ${recommendations.length}명)`}
             </CardTitle>
             <p className="text-muted-foreground text-xs">
-              점수 = 거리(0~30) + 등급(0~20) + 부하(0~25) + 선호지역(0~10) + 공정성(0~15)
+              거리·등급·당일 일감 수·선호 지역·공정성을 합산한 100점 기준 점수예요.
             </p>
           </CardHeader>
           <CardContent>
             {isRecommending ? (
-              <p className="text-muted-foreground text-sm">기사 후보 평가 중…</p>
+              <p className="text-muted-foreground text-sm">기사 후보를 분석하고 있어요…</p>
             ) : recommendations.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                추천 가능한 기사가 없습니다 (모두 일일 한도 초과 또는 비활성).
+                추천할 수 있는 기사가 없어요 (모두 오늘 일감이 가득 찼거나 휴직 상태).
               </p>
             ) : (
               <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -191,9 +191,9 @@ export function AssignForm(props: AssignFormProps): ReactElement {
                         <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
                           <span>{GRADE_LABEL[rec.grade] ?? rec.grade}</span>
                           <span>📍 {distanceLabel}</span>
-                          <span>오늘 {rec.today_load}건</span>
-                          <span>주간 {rec.weekly_load}건</span>
-                          {rec.preferred_match ? <span className="text-primary">선호지역</span> : null}
+                          <span>오늘 일감 {rec.today_load}건</span>
+                          <span>이번 주 {rec.weekly_load}건</span>
+                          {rec.preferred_match ? <span className="text-primary">선호 지역</span> : null}
                         </div>
                       </button>
                     </li>
