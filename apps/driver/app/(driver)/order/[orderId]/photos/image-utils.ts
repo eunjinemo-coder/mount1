@@ -1,5 +1,7 @@
 'use client';
 
+import exifr from 'exifr';
+
 const MAX_DIMENSION = 1920;
 const QUALITY = 0.85;
 const SKIP_THRESHOLD_BYTES = 1.5 * 1024 * 1024; // WebP & 1.5MB 미만이면 그대로
@@ -10,6 +12,42 @@ interface CompressResult {
   height: number;
   /** 원본 대비 압축률 (0~1) — 1이면 변환 skip */
   ratio: number;
+}
+
+export interface ExifMeta {
+  takenAt: string | null;
+  takenLat: number | null;
+  takenLng: number | null;
+}
+
+/**
+ * 클라 측 EXIF 추출 — 촬영 시간 + GPS 좌표만.
+ * exifr 가 EXIF segment 만 읽음 (전체 디코드 X, 빠름).
+ * 실패해도 throw 없이 null 반환 (사진 업로드 막지 않음).
+ */
+export async function extractExif(file: File): Promise<ExifMeta> {
+  if (!file.type.startsWith('image/')) {
+    return { takenAt: null, takenLat: null, takenLng: null };
+  }
+  try {
+    const data = await exifr.parse(file, {
+      pick: ['DateTimeOriginal', 'CreateDate', 'GPSLatitude', 'GPSLongitude'],
+    });
+    if (!data) return { takenAt: null, takenLat: null, takenLng: null };
+
+    const taken =
+      (data.DateTimeOriginal as Date | undefined) ?? (data.CreateDate as Date | undefined);
+    const lat = typeof data.GPSLatitude === 'number' ? data.GPSLatitude : null;
+    const lng = typeof data.GPSLongitude === 'number' ? data.GPSLongitude : null;
+
+    return {
+      takenAt: taken instanceof Date ? taken.toISOString() : null,
+      takenLat: lat,
+      takenLng: lng,
+    };
+  } catch {
+    return { takenAt: null, takenLat: null, takenLng: null };
+  }
 }
 
 async function blobFromCanvas(

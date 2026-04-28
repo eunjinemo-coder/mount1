@@ -36,6 +36,15 @@ export async function uploadPhotoAction(formData: FormData): Promise<UploadResul
   const width = typeof widthRaw === 'string' && widthRaw ? Number(widthRaw) : null;
   const height = typeof heightRaw === 'string' && heightRaw ? Number(heightRaw) : null;
 
+  const takenAtRaw = formData.get('takenAt');
+  const takenLatRaw = formData.get('takenLat');
+  const takenLngRaw = formData.get('takenLng');
+  const takenAt = typeof takenAtRaw === 'string' && takenAtRaw ? takenAtRaw : null;
+  const takenLatNum = typeof takenLatRaw === 'string' && takenLatRaw ? Number(takenLatRaw) : null;
+  const takenLngNum = typeof takenLngRaw === 'string' && takenLngRaw ? Number(takenLngRaw) : null;
+  const takenLat = takenLatNum != null && Number.isFinite(takenLatNum) ? takenLatNum : null;
+  const takenLng = takenLngNum != null && Number.isFinite(takenLngNum) ? takenLngNum : null;
+
   if (!UUID_RE.test(orderId)) {
     return { ok: false, error: '잘못된 주문 ID입니다.' };
   }
@@ -97,6 +106,9 @@ export async function uploadPhotoAction(formData: FormData): Promise<UploadResul
         size_bytes: file.size,
         width: width && width > 0 ? width : null,
         height: height && height > 0 ? height : null,
+        taken_at: takenAt,
+        taken_lat: takenLat,
+        taken_lng: takenLng,
         uploaded_at: new Date().toISOString(),
       })
       .eq('id', existing.id);
@@ -114,6 +126,9 @@ export async function uploadPhotoAction(formData: FormData): Promise<UploadResul
       size_bytes: file.size,
       width: width && width > 0 ? width : null,
       height: height && height > 0 ? height : null,
+      taken_at: takenAt,
+      taken_lat: takenLat,
+      taken_lng: takenLng,
     });
     if (insertError) {
       // 업로드된 파일 cleanup

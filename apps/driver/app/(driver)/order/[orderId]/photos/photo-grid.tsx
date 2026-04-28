@@ -4,7 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import { Camera, CheckCircle2, Loader2, Trash2 } from 'lucide-react';
 import { useRef, useState, useTransition, type ReactElement } from 'react';
 import { deletePhotoAction, uploadPhotoAction } from './actions';
-import { compressToWebP } from './image-utils';
+import { compressToWebP, extractExif } from './image-utils';
 
 export interface PhotoSlotData {
   slot: string;
@@ -49,15 +49,18 @@ function PhotoSlot({ orderId, slot }: { orderId: string; slot: PhotoSlotData }):
     setError(null);
 
     startTransition(async () => {
+      // EXIF 먼저 (원본에서) — 압축 후엔 메타 사라짐
+      const exif = await extractExif(file);
+
       // 클라 측 압축 — 4000px 원본 → 1920px WebP (70%+ 대역폭 절감)
       let toUpload: File = file;
       let width = 0;
       let height = 0;
       try {
-        const result = await compressToWebP(file);
-        toUpload = result.file;
-        width = result.width;
-        height = result.height;
+        const r = await compressToWebP(file);
+        toUpload = r.file;
+        width = r.width;
+        height = r.height;
       } catch {
         // 압축 실패해도 원본 업로드는 시도
       }
@@ -68,6 +71,9 @@ function PhotoSlot({ orderId, slot }: { orderId: string; slot: PhotoSlotData }):
       formData.append('file', toUpload);
       if (width > 0) formData.append('width', String(width));
       if (height > 0) formData.append('height', String(height));
+      if (exif.takenAt) formData.append('takenAt', exif.takenAt);
+      if (exif.takenLat != null) formData.append('takenLat', String(exif.takenLat));
+      if (exif.takenLng != null) formData.append('takenLng', String(exif.takenLng));
 
       const result = await uploadPhotoAction(formData);
       if (result.ok) {
