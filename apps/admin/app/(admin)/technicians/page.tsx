@@ -79,26 +79,44 @@ export default async function TechniciansPage(): Promise<ReactElement> {
                       <th className="py-2 text-left font-medium">상태</th>
                       <th className="py-2 text-left font-medium">일 한도</th>
                       <th className="py-2 text-left font-medium">주말</th>
+                      {isSuperAdmin ? <th className="py-2 text-right" /> : null}
                     </tr>
                   </thead>
                   <tbody>
-                    {technicians.map((t) => (
-                      <tr className="border-b last:border-0" key={t.id}>
-                        <td className="py-2 font-medium">{t.display_name}</td>
-                        <td className="text-muted-foreground py-2 text-xs">{t.login_id}</td>
-                        <td className="text-muted-foreground py-2">{t.phoneMasked}</td>
-                        <td className="py-2">
-                          <Badge variant="outline">{GRADE_LABEL[t.grade ?? ''] ?? t.grade}</Badge>
-                        </td>
-                        <td className="py-2">
-                          <Badge variant={t.status === 'active' ? 'default' : 'secondary'}>
-                            {STATUS_LABEL[t.status ?? ''] ?? t.status}
-                          </Badge>
-                        </td>
-                        <td className="text-muted-foreground py-2">{t.daily_max_jobs ?? '-'}</td>
-                        <td className="text-muted-foreground py-2">{t.weekend_enabled ? '✓' : '-'}</td>
-                      </tr>
-                    ))}
+                    {technicians.map((t) => {
+                      const rowContent = (
+                        <>
+                          <td className="py-2 font-medium">{t.display_name}</td>
+                          <td className="text-muted-foreground py-2 text-xs">{t.login_id}</td>
+                          <td className="text-muted-foreground py-2">{t.phoneMasked}</td>
+                          <td className="py-2">
+                            <Badge variant="outline">{GRADE_LABEL[t.grade ?? ''] ?? t.grade}</Badge>
+                          </td>
+                          <td className="py-2">
+                            <Badge variant={t.status === 'active' ? 'default' : 'secondary'}>
+                              {STATUS_LABEL[t.status ?? ''] ?? t.status}
+                            </Badge>
+                          </td>
+                          <td className="text-muted-foreground py-2">{t.daily_max_jobs ?? '-'}</td>
+                          <td className="text-muted-foreground py-2">{t.weekend_enabled ? '✓' : '-'}</td>
+                          {isSuperAdmin ? (
+                            <td className="text-right">
+                              <Link
+                                className="text-primary text-xs hover:underline"
+                                href={`/technicians/${t.id}`}
+                              >
+                                상세 →
+                              </Link>
+                            </td>
+                          ) : null}
+                        </>
+                      );
+                      return (
+                        <tr className="hover:bg-muted/30 border-b last:border-0" key={t.id}>
+                          {rowContent}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
