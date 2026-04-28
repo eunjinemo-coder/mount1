@@ -106,7 +106,7 @@ create policy hook_read_technicians on public.technicians
 --   -- (a) Hook 직접 호출 — 에러 없이 jsonb 반환되어야 함
 --   select public.custom_access_token_hook(
 --     jsonb_build_object(
---       'user_id', (select id from auth.users where email = 'super_admin_eunjin@internal.mountpartners.cloud'),
+--       'user_id', (select id from auth.users where email = 'super_admin_eunjin@mountpartners.cloud'),
 --       'claims', '{}'::jsonb
 --     )
 --   );

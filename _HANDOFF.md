@@ -54,7 +54,7 @@ URL: https://supabase.com/dashboard/project/nzphbeookxotdjzishqn/sql/new
 do $$
 declare
   v_user_id uuid := gen_random_uuid();
-  v_email text := 'super_admin_eunjin@internal.mountpartners.cloud';
+  v_email text := 'super_admin_eunjin@mountpartners.cloud';
   v_password text := 'STRONG_PASSWORD_HERE';
   v_display_name text := '은진';
 begin
@@ -122,7 +122,7 @@ select au.id, au.role, au.status, au.display_name,
 - 아이디: `eunjin`
 - 비밀번호: 설정한 STRONG_PASSWORD
 
-로 로그인. (폼 내부에서 fake email `super_admin_{username}@internal.mountpartners.cloud` 로 변환)
+로 로그인. (폼 내부에서 fake email `super_admin_{username}@mountpartners.cloud` 로 변환)
 
 ---
 
@@ -140,7 +140,7 @@ update auth.users
        phone_change = coalesce(phone_change, ''),
        phone_change_token = coalesce(phone_change_token, ''),
        reauthentication_token = coalesce(reauthentication_token, '')
- where email = 'super_admin_eunjin@internal.mountpartners.cloud';
+ where email = 'super_admin_eunjin@mountpartners.cloud';
 
 -- identities 누락 시 추가
 insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
@@ -148,7 +148,7 @@ select id::text, id,
        jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true, 'phone_verified', false),
        'email', now(), now(), now()
   from auth.users
- where email = 'super_admin_eunjin@internal.mountpartners.cloud'
+ where email = 'super_admin_eunjin@mountpartners.cloud'
    and id not in (select user_id from auth.identities where provider = 'email');
 ```
 
@@ -298,7 +298,7 @@ declare
   v_password text := 'STRONG_PASSWORD_HERE';       -- ← 12자+ 강한 비밀번호
   v_display_name text := '김민수';                  -- ← 기사 이름
   v_phone text := '01012345678';                   -- ← E.164 (하이픈 없이) — 알림톡 발송용
-  v_email text := 'technician_' || v_username || '@internal.mountpartners.cloud';
+  v_email text := 'technician_' || v_username || '@mountpartners.cloud';
   v_tech_id uuid;
 begin
   -- (1) auth.users

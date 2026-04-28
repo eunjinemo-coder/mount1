@@ -21,10 +21,10 @@ function toFakeEmail(args: {
   adminRoleHint?: AdminRole;
 }): string {
   if (args.userType === 'admin') {
-    return `${args.adminRoleHint ?? 'cs_admin'}_${args.username}@internal.mountpartners.cloud`;
+    return `${args.adminRoleHint ?? 'cs_admin'}_${args.username}@mountpartners.cloud`;
   }
 
-  return `technician_${args.username}@internal.mountpartners.cloud`;
+  return `technician_${args.username}@mountpartners.cloud`;
 }
 
 /** 발급형 ID 로그인 — username 을 fake email 로 변환 후 supabase.auth.signInWithPassword */

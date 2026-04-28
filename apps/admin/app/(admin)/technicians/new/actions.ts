@@ -90,7 +90,7 @@ export async function createTechnicianAction(
 
   // 비밀번호 + fake email 생성
   const tempPassword = generatePassword();
-  const fakeEmail = `technician_${input.loginId}@internal.mountpartners.cloud`;
+  const fakeEmail = `technician_${input.loginId}@mountpartners.cloud`;
 
   // service-role 로 auth.users 생성 (identities 매핑 자동)
   const adminClient = getAdminClient();
