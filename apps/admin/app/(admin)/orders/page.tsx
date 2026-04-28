@@ -145,11 +145,12 @@ export default async function OrdersPage(props: {
                       <th className="py-2 text-left font-medium">기사</th>
                       <th className="py-2 text-left font-medium">상태</th>
                       <th className="py-2 text-left font-medium">결제</th>
+                      <th className="py-2 text-right" />
                     </tr>
                   </thead>
                   <tbody>
                     {orders.map((order) => (
-                      <tr className="border-b last:border-0" key={order.id}>
+                      <tr className="hover:bg-muted/30 border-b last:border-0" key={order.id}>
                         <td className="py-2">
                           {order.scheduled_installation_at
                             ? TIME_FORMATTER.format(new Date(order.scheduled_installation_at))
@@ -169,6 +170,14 @@ export default async function OrdersPage(props: {
                         </td>
                         <td className="text-muted-foreground py-2 text-xs">
                           {order.last_payment_status ?? '-'}
+                        </td>
+                        <td className="py-2 text-right">
+                          <Link
+                            className="text-primary text-xs hover:underline"
+                            href={`/orders/${order.id}`}
+                          >
+                            상세 →
+                          </Link>
                         </td>
                       </tr>
                     ))}
