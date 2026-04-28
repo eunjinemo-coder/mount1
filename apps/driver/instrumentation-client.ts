@@ -7,8 +7,9 @@ import * as Sentry from '@sentry/nextjs';
 import { scrubEvent } from '@mount/lib/error-reporting';
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN_DRIVER;
+const enabled = !!dsn && (process.env.NODE_ENV === 'production' || process.env.SENTRY_DEV_ENABLED === '1');
 
-if (dsn) {
+if (enabled) {
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV,

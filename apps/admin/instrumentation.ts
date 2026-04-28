@@ -7,9 +7,10 @@ import * as Sentry from '@sentry/nextjs';
 import { scrubEvent } from '@mount/lib/error-reporting';
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN_ADMIN;
+const enabled = !!dsn && (process.env.NODE_ENV === 'production' || process.env.SENTRY_DEV_ENABLED === '1');
 
 export async function register(): Promise<void> {
-  if (!dsn) return;
+  if (!enabled) return;
 
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     Sentry.init({

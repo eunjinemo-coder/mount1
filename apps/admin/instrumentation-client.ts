@@ -7,8 +7,11 @@ import * as Sentry from '@sentry/nextjs';
 import { scrubEvent } from '@mount/lib/error-reporting';
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN_ADMIN;
+// dev 에서는 init skip — 매 요청 instrumentation 오버헤드 제거 (~93ms/req).
+// SENTRY_DEV_ENABLED=1 로 강제 활성화 가능.
+const enabled = !!dsn && (process.env.NODE_ENV === 'production' || process.env.SENTRY_DEV_ENABLED === '1');
 
-if (dsn) {
+if (enabled) {
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV,
