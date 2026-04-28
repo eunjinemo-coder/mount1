@@ -46,7 +46,7 @@ $pages = @(
     @{ Path = "/coupang"           ; Expected = 307 ; Note = "auth required" }
     @{ Path = "/live"              ; Expected = 307 ; Note = "auth required" }
     @{ Path = "/api/health"        ; Expected = 200 ; Note = "no auth" }
-    @{ Path = "/api/payouts/csv"   ; Expected = 403 ; Note = "session required" }
+    @{ Path = "/api/payouts/csv"   ; Expected = 307 ; Note = "auth required (middleware redirect)" }
 )
 
 $failures = 0
