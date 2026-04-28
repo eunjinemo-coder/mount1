@@ -4,31 +4,34 @@
 
 ---
 
-## 현재 상태 (2026-04-27 · commit 82a5061)
+## 현재 상태 (2026-04-28 · commit 179adb8)
 
 ```
-git: main @ 82a5061 (R7 + R8 + R9 누적 26+ commits)
+git: main @ 179adb8 (R7~R10 누적 35+ commits)
 검증: typecheck 6/6 ✓ · lint 6/6 ✓ · build 2/2 ✓
-라우트: driver 14 + admin 13 = 27 라우트
-와이어프레임 매칭률: ~95% (R8=90% → R9 = +5%)
+라우트: driver 14 + admin 16 = 30 라우트
+프로젝트 위치: C:\dev\MOUNT1 (HDD D:\ → SSD C:\ 이전 완료)
+와이어프레임 매칭률: ~97% (R9=95% → R10 = +2%)
 보안 P0: 0건 · P1: 5건 (백로그)
-운영 가능 항목: 협력기사 발급 / 정산 CSV / 사진 압축 / 추천 알고리즘 / Realtime / tel 딥링크 / 일괄 처리 / 취소 리포트 전달
-의존성: 2 moderate (uuid<14 / postcss<8.5.10) — Sentry/Next 패치 릴리즈 대기
+인증/로그인: 정상 동작 (super_admin 발급 + admin /today 진입 확인)
+운영 가능 항목: 기사 발급/잠금/등급/상태/한도 + 주문 상세/수동 변경 + 정산 CSV +
+              사진 압축+EXIF + 추천 알고리즘 + Realtime + tel 딥링크 + 일괄 처리 + 취소 전달
+의존성: 2 moderate (uuid<14 / postcss<8.5.10) — Sentry/Next 패치 대기
 ```
 
-## 다음 세션 진입 시 1단계 — 은진님 액션 (`_HANDOFF.md` 참조)
+## 다음 세션 진입 시 1단계 — 은진님 액션
 
 ```bash
-cd D:\MOUNT1 && git pull
-supabase db push                           # 0005~0012 7개 마이그레이션 적용
-pnpm --filter @mount/db db:types:dev       # types regenerate (RPC 6 + recommend 1 추가)
+cd C:\dev\MOUNT1 && git pull
+supabase db push                           # 0009~0014 6개 마이그레이션 적용
+pnpm --filter @mount/db db:types:dev       # types regenerate (RPC 7 + recommend 1 추가)
 ```
 
-추가 (Dashboard 1회):
-- Auth → Hooks → Custom Access Token Hook 활성화
-- Storage → photos-hot · signatures · cls-reports-draft 3 버킷 생성
-- Settings → Vault → `pii_key` secret 등록 (openssl rand -base64 32)
-- SQL Editor → super_admin 발급 (HANDOFF #4 단일 do$$ 블록)
+기 적용 작업 (한 번만):
+- ✅ Auth → Hooks → Custom Access Token Hook 활성화
+- 🟡 Storage → photos-hot · signatures · cls-reports-draft 3 버킷 생성
+- 🟡 Settings → Vault → `pii_key` secret 등록 (openssl rand -base64 32)
+- ✅ super_admin 발급 (Dashboard "Add user" 사용 — `mountpartners.cloud` 도메인)
 
 ## R8 완료 항목 (이번 라운드)
 
@@ -54,20 +57,31 @@ pnpm --filter @mount/db db:types:dev       # types regenerate (RPC 6 + recommend
 4. ✅ **/admin/coupang 취소 리포트 일괄 전달** — pending → transferred_manually 마킹
    · 다중 선택 + 3 모드 (수기/일일/주간 묶음) · count: 'exact' 검증
 
-## R10 후보 (다음 세션)
+## R10 완료 항목 (이번 라운드)
+
+1. ✅ **0013 Hook 권한 복구** — `Database error querying schema` 해소 (try/except + grant 멱등 재선언)
+2. ✅ **fake email 도메인 교체** — `internal.X` 거부 → `mountpartners.cloud` (auth/users + identities update SQL 포함)
+3. ✅ **admin root `/` page** — `/today` 자동 redirect (404 차단)
+4. ✅ **getSession DB fallback** — JWT 비어있으면 admin_users / technicians 직접 조회 (Hook 깨져도 작동)
+5. ✅ **0014 technicians_select_auth_self** — driver fallback 위한 RLS 정책
+6. ✅ **dev Sentry skip** — instrumentation 매 요청 ~93ms 오버헤드 제거 (NODE_ENV !== production)
+7. ✅ **/admin/technicians/[id]** — 잠금 해제/등급/상태/한도 변경 + 최근 7일 활동 통계 (super_admin only)
+8. ✅ **A07 EXIF 추출** — exifr@^7 + photos.taken_at/lat/lng 자동 채움 (압축 전 원본에서)
+9. ✅ **/admin/orders/[id]** — 기본정보 + 기사 + 통계 + 이력 + status/scheduled 수동 변경
+
+## R11 후보 (다음 세션)
 
 1. **Kakao Maps SDK** — A02 지도 탭 + B06 admin live (key 발급 후)
-2. **A07 EXIF 추출** — exifr 추가 + GPS/촬영시간 photos.taken_* 컬럼 채움
-3. **B03 ETL 업로드** — 쿠팡 양식 확정 후 CSV/XLSX import
-4. **B07 PortOne 결제 링크** — Webhook + 결제 상태 sync (가맹점 가입 후)
-5. **/admin/technicians/[id] 상세 + 잠금/등급변경**
+2. **B03 ETL 업로드** — 쿠팡 양식 확정 후 CSV/XLSX import
+3. **B07 PortOne 결제 링크** — Webhook + 결제 상태 sync (가맹점 가입 후)
+4. **사진 lifecycle** — Hot → Warm 30일, R2 이관
+5. **E2E 테스트** (Playwright + Vercel Browser)
 
-## 잔존 백로그 (R10+)
+## 잔존 백로그
 
-- 사진 lifecycle (Hot → Warm 30일, R2 이관)
 - pg_cron 본문 (prod Pro 전환 후 0003_cron 적용)
 - next-pwa Turbopack 호환 (Phase 2)
 - 관리자 IP whitelist 검증 (Phase 2)
-- E2E 테스트 (Playwright + Vercel Browser)
 - Sentry source map 업로드 (Auth Token 발급 후)
 - Login server action debug log 정리 (P3)
+- types.generated.ts regenerate (db push 후 자동 — 일부 컬럼 GenericStringError 우회 중)
