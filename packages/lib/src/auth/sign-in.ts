@@ -55,6 +55,6 @@ export async function signInWithUsername(args: {
 
   return {
     ok: true,
-    redirect: args.userType === 'admin' ? '/admin' : '/',
+    redirect: args.userType === 'admin' ? '/today' : '/',
   };
 }
