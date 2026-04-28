@@ -27,7 +27,15 @@ function parseOptionalString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
-/** 현재 세션 조회. 미로그인 시 null */
+/**
+ * 현재 세션 조회. 미로그인 시 null.
+ *
+ * 세션 데이터는 두 단계로 결정:
+ * 1. JWT app_metadata 우선 (Hook 이 채움 — 빠르고 DB hit 0)
+ * 2. JWT 비어있으면 admin_users / technicians 직접 lookup (Hook OFF / 미설정 안전망)
+ *
+ * RLS 정책 admin_users_select_self / technicians_select_self 가 본인 row 만 허용.
+ */
 export async function getSession(): Promise<AppSession | null> {
   const client = await getServerClient();
   const { data } = await client.auth.getUser();
@@ -37,14 +45,45 @@ export async function getSession(): Promise<AppSession | null> {
     return null;
   }
 
-  // Supabase UserAppMetadata 는 [key: string]: any 시그니처 — Record 로 받아 타입 가드 통과
   const metadata = (user.app_metadata ?? {}) as Record<string, unknown>;
+  let userType = parseUserType(metadata.user_type);
+  let adminRole = parseAdminRole(metadata.admin_role);
+  let adminUserId = parseOptionalString(metadata.admin_user_id);
+  let technicianId = parseOptionalString(metadata.technician_id);
+
+  // Hook 이 채우지 못한 경우 DB fallback (admin 우선)
+  if (!userType) {
+    const { data: adminRow } = await client
+      .from('admin_users')
+      .select('id, role, status')
+      .eq('auth_user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (adminRow) {
+      userType = 'admin';
+      adminRole = parseAdminRole(adminRow.role);
+      adminUserId = adminRow.id;
+    } else {
+      const { data: techRow } = await client
+        .from('technicians')
+        .select('id, status')
+        .eq('auth_user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (techRow) {
+        userType = 'technician';
+        technicianId = techRow.id;
+      }
+    }
+  }
 
   return {
     userId: user.id,
-    userType: parseUserType(metadata.user_type),
-    adminRole: parseAdminRole(metadata.admin_role),
-    technicianId: parseOptionalString(metadata.technician_id),
-    adminUserId: parseOptionalString(metadata.admin_user_id),
+    userType,
+    adminRole,
+    technicianId,
+    adminUserId,
   };
 }
