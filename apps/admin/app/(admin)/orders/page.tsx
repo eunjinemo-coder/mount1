@@ -138,42 +138,45 @@ export default async function OrdersPage(props: {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="py-2 text-left font-medium">시각</th>
-                      <th className="py-2 text-left font-medium">지역</th>
-                      <th className="py-2 text-left font-medium">TV</th>
-                      <th className="py-2 text-left font-medium">기사</th>
-                      <th className="py-2 text-left font-medium">상태</th>
-                      <th className="py-2 text-left font-medium">결제</th>
-                      <th className="py-2 text-right" />
+                    <tr className="border-b text-xs uppercase tracking-wider">
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">시공 시각</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">지역</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">TV</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">담당 기사</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">상태</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">결제</th>
+                      <th className="px-2 py-3 text-right" />
                     </tr>
                   </thead>
                   <tbody>
                     {orders.map((order) => (
-                      <tr className="hover:bg-muted/30 border-b last:border-0" key={order.id}>
-                        <td className="py-2">
+                      <tr
+                        className="hover:bg-muted/40 border-b transition-colors last:border-0"
+                        key={order.id}
+                      >
+                        <td className="px-2 py-3 font-medium tabular-nums">
                           {order.scheduled_installation_at
                             ? TIME_FORMATTER.format(new Date(order.scheduled_installation_at))
                             : '미정'}
                         </td>
-                        <td className="py-2">{order.address_region_sigungu ?? '-'}</td>
-                        <td className="text-muted-foreground py-2">{order.tv_display ?? '-'}</td>
-                        <td className="py-2">
+                        <td className="px-2 py-3">{order.address_region_sigungu ?? '-'}</td>
+                        <td className="text-muted-foreground px-2 py-3">{order.tv_display ?? '-'}</td>
+                        <td className="px-2 py-3">
                           {order.technician_name ?? (
-                            <span className="text-muted-foreground">미배차</span>
+                            <span className="text-muted-foreground italic">미배정</span>
                           )}
                         </td>
-                        <td className="py-2">
+                        <td className="px-2 py-3">
                           <Badge variant="outline">
                             {STATUS_LABEL[order.status ?? ''] ?? order.status}
                           </Badge>
                         </td>
-                        <td className="text-muted-foreground py-2 text-xs">
+                        <td className="text-muted-foreground px-2 py-3 text-xs">
                           {order.last_payment_status ?? '-'}
                         </td>
-                        <td className="py-2 text-right">
+                        <td className="px-2 py-3 text-right">
                           <Link
-                            className="text-primary text-xs hover:underline"
+                            className="text-primary hover:bg-primary/5 inline-flex items-center rounded px-2 py-1 text-xs font-medium hover:underline"
                             href={`/orders/${order.id}`}
                           >
                             상세 →

@@ -1,3 +1,4 @@
+@import 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css';
 @import '@mount/config/tokens.css';
 
 @tailwind base;
@@ -19,11 +20,70 @@
     padding: 0;
   }
 
+  html {
+    font-feature-settings: 'ss03' 1, 'cv11' 1;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans text-base;
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.025em;
+    line-height: 1.3;
+  }
+  h5,
+  h6 {
+    letter-spacing: -0.02em;
+    line-height: 1.4;
+  }
+
+  .tabular,
+  td.numeric,
+  .number {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* 모바일 - iOS auto-zoom 방지 (input 16px 이상) */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  /* 큰 터치 영역 — 모바일 우선 */
+  button,
+  a {
+    touch-action: manipulation;
   }
 
   a {
@@ -32,7 +92,7 @@
 }
 
 @layer components {
-  /* PWA safe-area 보정 — 기사앱 모바일 최우선 (iOS notch · Android gesture bar) */
+  /* PWA safe-area — iOS notch · Android gesture bar */
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }

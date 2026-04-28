@@ -71,38 +71,38 @@ export default async function TechniciansPage(): Promise<ReactElement> {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="py-2 text-left font-medium">이름</th>
-                      <th className="py-2 text-left font-medium">로그인 ID</th>
-                      <th className="py-2 text-left font-medium">전화</th>
-                      <th className="py-2 text-left font-medium">등급</th>
-                      <th className="py-2 text-left font-medium">상태</th>
-                      <th className="py-2 text-left font-medium">일 한도</th>
-                      <th className="py-2 text-left font-medium">주말</th>
-                      {isSuperAdmin ? <th className="py-2 text-right" /> : null}
+                    <tr className="border-b text-xs uppercase tracking-wider">
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">이름</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">로그인 ID</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">전화</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">등급</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">상태</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">하루 한도</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">주말</th>
+                      {isSuperAdmin ? <th className="px-2 py-3 text-right" /> : null}
                     </tr>
                   </thead>
                   <tbody>
                     {technicians.map((t) => {
                       const rowContent = (
                         <>
-                          <td className="py-2 font-medium">{t.display_name}</td>
-                          <td className="text-muted-foreground py-2 text-xs">{t.login_id}</td>
-                          <td className="text-muted-foreground py-2">{t.phoneMasked}</td>
-                          <td className="py-2">
+                          <td className="px-2 py-3 font-medium">{t.display_name}</td>
+                          <td className="text-muted-foreground px-2 py-3 font-mono text-xs">{t.login_id}</td>
+                          <td className="text-muted-foreground px-2 py-3 tabular-nums">{t.phoneMasked}</td>
+                          <td className="px-2 py-3">
                             <Badge variant="outline">{GRADE_LABEL[t.grade ?? ''] ?? t.grade}</Badge>
                           </td>
-                          <td className="py-2">
+                          <td className="px-2 py-3">
                             <Badge variant={t.status === 'active' ? 'default' : 'secondary'}>
                               {STATUS_LABEL[t.status ?? ''] ?? t.status}
                             </Badge>
                           </td>
-                          <td className="text-muted-foreground py-2">{t.daily_max_jobs ?? '-'}</td>
-                          <td className="text-muted-foreground py-2">{t.weekend_enabled ? '✓' : '-'}</td>
+                          <td className="text-muted-foreground px-2 py-3 tabular-nums">{t.daily_max_jobs ?? '-'}</td>
+                          <td className="text-muted-foreground px-2 py-3">{t.weekend_enabled ? '✓' : '-'}</td>
                           {isSuperAdmin ? (
-                            <td className="text-right">
+                            <td className="px-2 py-3 text-right">
                               <Link
-                                className="text-primary text-xs hover:underline"
+                                className="text-primary hover:bg-primary/5 inline-flex items-center rounded px-2 py-1 text-xs font-medium hover:underline"
                                 href={`/technicians/${t.id}`}
                               >
                                 상세 →
@@ -112,7 +112,7 @@ export default async function TechniciansPage(): Promise<ReactElement> {
                         </>
                       );
                       return (
-                        <tr className="hover:bg-muted/30 border-b last:border-0" key={t.id}>
+                        <tr className="hover:bg-muted/40 border-b transition-colors last:border-0" key={t.id}>
                           {rowContent}
                         </tr>
                       );

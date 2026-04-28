@@ -19,11 +19,15 @@ const TONE_CLASS: Record<NonNullable<KpiCardProps['tone']>, string> = {
 export function KpiCard(props: KpiCardProps): ReactElement {
   const tone = props.tone ?? 'default';
   return (
-    <Card className={cn(TONE_CLASS[tone])}>
-      <CardContent className="space-y-1 py-5">
-        <p className="text-muted-foreground text-sm">{props.label}</p>
-        <p className="text-3xl font-bold tabular-nums">{props.value}</p>
-        {props.hint ? <p className="text-muted-foreground text-xs">{props.hint}</p> : null}
+    <Card className={cn('transition-shadow duration-200 hover:shadow-md', TONE_CLASS[tone])}>
+      <CardContent className="flex flex-col gap-1.5 px-5 py-5">
+        <p className="text-muted-foreground text-sm font-medium leading-none">{props.label}</p>
+        <p className="text-foreground text-4xl font-bold tabular-nums tracking-tight leading-none">
+          {props.value}
+        </p>
+        {props.hint ? (
+          <p className="text-muted-foreground mt-0.5 text-xs leading-tight">{props.hint}</p>
+        ) : null}
       </CardContent>
     </Card>
   );

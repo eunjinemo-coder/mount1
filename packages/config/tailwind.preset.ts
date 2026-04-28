@@ -118,6 +118,27 @@ const preset: Partial<Config> = {
         mono: 'var(--font-mono)',
       },
 
+      // 한국어 가독성 최적화 — line-height/letter-spacing 일괄 정의
+      // Pretendard + 한글에서 line-height 1.5~1.7, letter-spacing -0.01~-0.035em 권장
+      fontSize: {
+        xs: ['12px', { lineHeight: '1.5', letterSpacing: '0' }],
+        sm: ['14px', { lineHeight: '1.6', letterSpacing: '-0.005em' }],
+        base: ['16px', { lineHeight: '1.7', letterSpacing: '-0.01em' }],
+        lg: ['18px', { lineHeight: '1.6', letterSpacing: '-0.015em' }],
+        xl: ['20px', { lineHeight: '1.5', letterSpacing: '-0.02em' }],
+        '2xl': ['24px', { lineHeight: '1.4', letterSpacing: '-0.02em' }],
+        '3xl': ['30px', { lineHeight: '1.3', letterSpacing: '-0.025em' }],
+        '4xl': ['36px', { lineHeight: '1.25', letterSpacing: '-0.03em' }],
+        '5xl': ['48px', { lineHeight: '1.1', letterSpacing: '-0.035em' }],
+        '6xl': ['60px', { lineHeight: '1.05', letterSpacing: '-0.04em' }],
+      },
+
+      letterSpacing: {
+        ko: '-0.01em',
+        'ko-tight': '-0.025em',
+        'ko-loose': '0',
+      },
+
       transitionDuration: {
         fast: '100ms',
         base: '150ms',

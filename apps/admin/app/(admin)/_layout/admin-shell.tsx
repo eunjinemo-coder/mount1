@@ -12,17 +12,18 @@ import Link from 'next/link';
 import type { ReactElement, ReactNode } from 'react';
 
 /**
- * 관리자 공용 셸 — 글로벌 헤더 + 좌측 사이드바.
+ * 관리자 공용 셸 — 좌측 사이드바 + 상단 헤더.
  * 와이어프레임: B02 admin_today §글로벌 헤더·사이드바
  *
- * 사용: 인증된 admin 화면(today, orders, dispatch, live, payouts 등) 에서
- * `<AdminShell title="...">{...}</AdminShell>` 로 감쌈. login 은 미사용.
+ * 디자인 시스템:
+ * - 사이드바: w-52 (한글 라벨 여유)
+ * - active: bg-primary/10 + 좌측 indicator bar
+ * - hover: bg-muted/60 (대비 ↑)
  */
 export interface AdminShellProps {
   title?: string;
   adminName?: string;
   notificationCount?: number;
-  /** 사이드바 활성 항목 */
   activeNav?: 'today' | 'orders' | 'dispatch' | 'technicians' | 'live' | 'payouts' | 'coupang';
   children: ReactNode;
 }
@@ -40,46 +41,66 @@ const NAV = [
 export function AdminShell(props: AdminShellProps): ReactElement {
   return (
     <div className="bg-background flex min-h-dvh">
-      <aside className="bg-card sticky top-0 hidden h-dvh w-44 shrink-0 border-r md:flex md:flex-col">
-        <div className="flex h-14 items-center px-4 font-semibold">🛠 마운트파트너스</div>
-        <nav className="flex-1 space-y-1 p-2">
+      <aside className="bg-card sticky top-0 hidden h-dvh w-52 shrink-0 border-r md:flex md:flex-col">
+        <div className="flex h-16 items-center gap-2 border-b px-5">
+          <span className="text-lg" aria-hidden>
+            🛠
+          </span>
+          <span className="font-bold tracking-tight">마운트파트너스</span>
+        </div>
+        <nav className="flex-1 space-y-1 p-3">
           {NAV.map((item) => {
             const Icon = item.icon;
             const isActive = props.activeNav === item.id;
             return (
               <Link
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                className={`relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${
                   isActive
-                    ? 'bg-primary/10 text-primary font-semibold'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                 }`}
                 href={item.href}
                 key={item.id}
               >
-                <Icon className="size-4" aria-hidden />
-                {item.label}
+                {isActive ? (
+                  <span
+                    aria-hidden
+                    className="bg-primary absolute inset-y-1 left-0 w-1 rounded-r"
+                  />
+                ) : null}
+                <Icon className="size-4 shrink-0" aria-hidden />
+                <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="text-muted-foreground p-3 text-xs">v0.1.0 · © 2026</div>
+        <div className="border-t px-4 py-3">
+          <p className="text-muted-foreground text-xs">마운트파트너스 v0.1.0</p>
+          <p className="text-muted-foreground/70 text-[11px]">© 2026 벽걸이프로</p>
+        </div>
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="bg-background sticky top-0 z-40 flex h-14 items-center justify-between border-b px-6">
+        <header className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 flex h-16 items-center justify-between border-b px-6 backdrop-blur">
           <div className="flex items-center gap-3">
             <span className="font-semibold md:hidden">🛠 마운트파트너스</span>
-            {props.title ? <h1 className="text-foreground text-base">{props.title}</h1> : null}
+            {props.title ? (
+              <h1 className="text-foreground text-base font-semibold tracking-tight">
+                {props.title}
+              </h1>
+            ) : null}
           </div>
-          <div className="text-muted-foreground flex items-center gap-4 text-sm">
+          <div className="text-muted-foreground flex items-center gap-3 text-sm">
             {typeof props.notificationCount === 'number' && props.notificationCount > 0 ? (
-              <span className="bg-destructive/10 text-destructive flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-                <AlertCircle className="size-3" />
-                {props.notificationCount}
+              <span className="bg-destructive/10 text-destructive flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium">
+                <AlertCircle className="size-3" aria-hidden />
+                <span>{props.notificationCount}</span>
               </span>
             ) : null}
-            <span>{props.adminName ?? '관리자'} ▾</span>
+            <span className="text-foreground/80 font-medium">
+              {props.adminName ?? '관리자'} ▾
+            </span>
           </div>
         </header>
 
