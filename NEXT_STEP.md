@@ -57,7 +57,17 @@ pnpm --filter @mount/db db:types:dev       # types regenerate (RPC 7 + recommend
 4. ✅ **/admin/coupang 취소 리포트 일괄 전달** — pending → transferred_manually 마킹
    · 다중 선택 + 3 모드 (수기/일일/주간 묶음) · count: 'exact' 검증
 
-## R10 완료 항목 (이번 라운드)
+## R11 완료 항목 (방금)
+
+1. ✅ **0015 dev seed** — customers 5 + orders 12 (status 분포) + installations + cancel report
+   · 멱등 do$$ 블록 (SEED_MARKER_DEV 로 재실행 안전)
+   · 첫 active technician 자동 lookup → 배차/완료 케이스 매핑
+   · 미배차 4건 → dispatch 추천 알고리즘 검증 가능
+   · ⚠️ prod 절대 push 금지
+2. ✅ **scripts/e2e-admin-smoke.ps1** — 11 endpoint + Supabase auth API + JWT decode
+3. ✅ **_E2E_CHECKLIST.md** — 60+ 체크박스 (admin 8 영역 + driver 9 영역 + DB 검증 SQL)
+
+## R10 완료 항목
 
 1. ✅ **0013 Hook 권한 복구** — `Database error querying schema` 해소 (try/except + grant 멱등 재선언)
 2. ✅ **fake email 도메인 교체** — `internal.X` 거부 → `mountpartners.cloud` (auth/users + identities update SQL 포함)
