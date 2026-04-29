@@ -3,6 +3,7 @@ import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
+import { AlertsPanel } from './alerts-panel';
 import { AutoRefresh } from './auto-refresh';
 import { KpiCard } from './kpi-card';
 import { TechnicianBars } from './technician-bars';
@@ -131,6 +132,8 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
         </header>
 
         {unassignedCount > 0 ? <UnassignedBanner count={unassignedCount} /> : null}
+
+        <AlertsPanel />
 
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           <KpiCard label="오늘 배차" value={todayCount} hint="모든 상태 합계" />

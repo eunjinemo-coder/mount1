@@ -8,13 +8,24 @@ import { startInstallationAction } from './actions';
 export interface StartFormProps {
   orderId: string;
   status: string;
+  allPhotosReady: boolean;
+  missingCount: number;
 }
 
 export function StartForm(props: StartFormProps): ReactElement {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
   const isOnSite = props.status === 'on_site';
+  const blocked = !isOnSite || !props.allPhotosReady;
+
+  // 차단 사유 — 가장 우선순위 높은 것 1개만 안내
+  const blockReason = !isOnSite
+    ? `현장 도착 후 가능 (현재: ${props.status})`
+    : !props.allPhotosReady
+      ? `필수 사진 ${props.missingCount}장 부족`
+      : null;
 
   return (
     <div className="space-y-3">
@@ -24,21 +35,20 @@ export function StartForm(props: StartFormProps): ReactElement {
         </div>
       ) : null}
 
-      {!isOnSite ? (
-        <p className="text-muted-foreground text-sm">
-          현재 상태: <strong>{props.status}</strong> · 시공 시작은 현장 도착 후 가능합니다.
+      {blockReason ? (
+        <p className="text-muted-foreground rounded-md border bg-muted/30 px-3 py-2 text-sm">
+          ⚠️ {blockReason}
         </p>
       ) : null}
 
       <Button
         className="w-full"
-        disabled={!isOnSite || isPending}
+        disabled={blocked || isPending}
         onClick={() => {
           setError(null);
           startTransition(async () => {
             const result = await startInstallationAction(props.orderId);
             if (result.ok) {
-              // photos 라우트는 R4 작업. 우선 주문 상세로 복귀 (in_progress 상태 → '시공 완료' 버튼 노출).
               router.push(`/order/${props.orderId}`);
             } else if (result.error) {
               setError(result.error);
