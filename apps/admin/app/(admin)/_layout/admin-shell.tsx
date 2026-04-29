@@ -1,3 +1,4 @@
+import { getSession } from '@mount/lib';
 import {
   AlertCircle,
   Coffee,
@@ -10,6 +11,15 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactElement, ReactNode } from 'react';
+import { UserMenu } from './user-menu';
+
+const ROLE_LABEL: Record<string, string> = {
+  super_admin: '대표',
+  cs_admin: '본사CS',
+  dispatch_admin: '배차담당',
+  ops_admin: '쿠팡CS',
+  auditor: '감사',
+};
 
 /**
  * 관리자 공용 셸 — 좌측 사이드바 + 상단 헤더.
@@ -23,6 +33,7 @@ import type { ReactElement, ReactNode } from 'react';
 export interface AdminShellProps {
   title?: string;
   adminName?: string;
+  adminRole?: string;
   notificationCount?: number;
   activeNav?: 'today' | 'orders' | 'dispatch' | 'technicians' | 'live' | 'payouts' | 'coupang';
   children: ReactNode;
@@ -38,7 +49,12 @@ const NAV = [
   { id: 'coupang', label: '쿠팡', href: '/coupang', icon: Coffee },
 ] as const;
 
-export function AdminShell(props: AdminShellProps): ReactElement {
+export async function AdminShell(props: AdminShellProps): Promise<ReactElement> {
+  // 세션 자동 fetch — props 우선, 없으면 session 에서 보충
+  const session = props.adminName && props.adminRole ? null : await getSession();
+  const resolvedName = props.adminName ?? session?.userId.slice(0, 6) ?? '관리자';
+  const resolvedRole = props.adminRole ?? session?.adminRole ?? '';
+
   return (
     <div className="bg-background flex min-h-dvh">
       <aside className="bg-card sticky top-0 hidden h-dvh w-52 shrink-0 border-r md:flex md:flex-col">
@@ -98,9 +114,10 @@ export function AdminShell(props: AdminShellProps): ReactElement {
                 <span>{props.notificationCount}</span>
               </span>
             ) : null}
-            <span className="text-foreground/80 font-medium">
-              {props.adminName ?? '관리자'} ▾
-            </span>
+            <UserMenu
+              adminName={resolvedName}
+              adminRoleLabel={ROLE_LABEL[resolvedRole] ?? '관리자'}
+            />
           </div>
         </header>
 
