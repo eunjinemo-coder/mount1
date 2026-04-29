@@ -94,6 +94,8 @@ export async function updateCapacityAction(
     .eq('id', id);
 
   if (error) return { ok: false, error: '한도 변경 실패' };
+  // P1-3 — 목록 페이지도 revalidate (다른 mutation 들과 일관성)
   revalidatePath(`/technicians/${id}`);
+  revalidatePath('/technicians');
   return { ok: true };
 }

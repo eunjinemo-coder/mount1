@@ -4,3 +4,10 @@ export { signOut } from './sign-out';
 export type { AppSession } from './session';
 export { getSession } from './session';
 export { ForbiddenError, RedirectError, requireRole } from './require-role';
+export {
+  UUID_RE,
+  isValidUuid,
+  assertAdminRole,
+  assertTechnicianSession,
+  generateSecurePassword,
+} from './asserts';

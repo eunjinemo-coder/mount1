@@ -1,6 +1,8 @@
 'use server';
 
 import { callRpc, getServerClient } from '@mount/db';
+import { assertAdminRole, isValidUuid } from '@mount/lib';
+import { revalidatePath } from 'next/cache';
 
 export interface AssignResult {
   ok: boolean;
@@ -32,7 +34,10 @@ export interface RecommendResult {
 }
 
 export async function recommendTechniciansAction(orderId: string): Promise<RecommendResult> {
-  if (!orderId) {
+  // P0 — 서버 액션 레벨 권한 가드 (defense in depth)
+  await assertAdminRole(['super_admin', 'dispatch_admin']);
+
+  if (!isValidUuid(orderId)) {
     return { ok: false, error: '주문을 먼저 선택해 주세요.' };
   }
 
@@ -62,7 +67,10 @@ export async function assignOrderAction(
   technicianId: string,
   overrideReason?: string,
 ): Promise<AssignResult> {
-  if (!orderId || !technicianId) {
+  // P0 — 서버 액션 레벨 권한 가드
+  await assertAdminRole(['super_admin', 'dispatch_admin']);
+
+  if (!isValidUuid(orderId) || !isValidUuid(technicianId)) {
     return { ok: false, error: '주문과 기사를 모두 선택해 주세요.' };
   }
 
@@ -86,6 +94,11 @@ export async function assignOrderAction(
     }
     return { ok: false, error: '배차에 실패했어요. 다시 시도해 주세요.' };
   }
+
+  // P2 — revalidate 누락 보완
+  revalidatePath('/dispatch');
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath('/today');
 
   return { ok: true };
 }

@@ -2,7 +2,8 @@
 
 import { getAdminClient } from '@mount/db/admin';
 import { getServerClient } from '@mount/db/server';
-import { ForbiddenError, getSession } from '@mount/lib';
+import { assertAdminRole, generateSecurePassword } from '@mount/lib';
+import { revalidatePath } from 'next/cache';
 
 const LOGIN_ID_RE = /^[a-z][a-z0-9_]{2,31}$/;
 const PHONE_RE = /^010\d{7,8}$/;
@@ -29,35 +30,11 @@ export interface CreateTechnicianResult {
   error?: string;
 }
 
-/** 12자 강한 비밀번호 자동 생성 — 대·소·숫자·특수 각 1자 이상 보장 */
-function generatePassword(): string {
-  const lower = 'abcdefghjkmnpqrstuvwxyz';
-  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const digit = '23456789';
-  const symbol = '!@#$%&*';
-  const all = lower + upper + digit + symbol;
-
-  const pick = (set: string): string => set[Math.floor(Math.random() * set.length)] ?? '';
-
-  const required = [pick(lower), pick(upper), pick(digit), pick(symbol)];
-  const fill = Array.from({ length: 8 }, () => pick(all));
-  const combined = [...required, ...fill];
-
-  for (let i = combined.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [combined[i], combined[j]] = [combined[j]!, combined[i]!];
-  }
-  return combined.join('');
-}
-
 export async function createTechnicianAction(
   input: CreateTechnicianInput,
 ): Promise<CreateTechnicianResult> {
-  // 권한 — super_admin 만
-  const session = await getSession();
-  if (!session || session.adminRole !== 'super_admin') {
-    throw new ForbiddenError('only_super_admin');
-  }
+  // 권한 — super_admin 만 (P0 보강 — assertAdminRole 헬퍼 사용)
+  await assertAdminRole(['super_admin']);
 
   // 입력 검증
   if (!LOGIN_ID_RE.test(input.loginId)) {
@@ -88,8 +65,8 @@ export async function createTechnicianAction(
     return { ok: false, error: '이미 사용 중인 login_id 입니다.' };
   }
 
-  // 비밀번호 + fake email 생성
-  const tempPassword = generatePassword();
+  // 비밀번호 + fake email 생성 (CSPRNG)
+  const tempPassword = generateSecurePassword();
   const fakeEmail = `technician_${input.loginId}@mountpartners.cloud`;
 
   // service-role 로 auth.users 생성 (identities 매핑 자동)
@@ -103,9 +80,11 @@ export async function createTechnicianAction(
   });
 
   if (createError || !created.user) {
+    // P0 — DB 에러 메시지 평문 노출 금지 (내부 schema 노출 방지)
+    console.error('[createTechnicianAction] auth.admin.createUser failed:', createError);
     return {
       ok: false,
-      error: `계정 생성 실패: ${createError?.message ?? 'unknown'}`,
+      error: '계정 생성에 실패했습니다. 관리자에게 문의해 주세요.',
     };
   }
 
@@ -133,11 +112,16 @@ export async function createTechnicianAction(
   if (techError || !tech) {
     // rollback — auth.users 도 정리
     await adminClient.auth.admin.deleteUser(authUserId);
+    console.error('[createTechnicianAction] technicians INSERT failed:', techError);
     return {
       ok: false,
-      error: `기사 등록 실패: ${techError?.message ?? 'unknown'}`,
+      error: '기사 등록에 실패했습니다. 관리자에게 문의해 주세요.',
     };
   }
+
+  // P2 — revalidate 누락 보완
+  revalidatePath('/technicians');
+  revalidatePath(`/technicians/${tech.id}`);
 
   return {
     ok: true,

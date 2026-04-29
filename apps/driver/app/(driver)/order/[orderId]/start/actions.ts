@@ -1,6 +1,8 @@
 'use server';
 
 import { callRpc, getServerClient } from '@mount/db';
+import { assertTechnicianSession, isValidUuid } from '@mount/lib';
+import { revalidatePath } from 'next/cache';
 
 export interface StartResult {
   ok: boolean;
@@ -14,6 +16,13 @@ interface StartPayload {
 }
 
 export async function startInstallationAction(orderId: string): Promise<StartResult> {
+  // P0 — 세션 가드
+  await assertTechnicianSession();
+
+  if (!isValidUuid(orderId)) {
+    return { ok: false, error: '잘못된 주문 ID입니다.' };
+  }
+
   const client = await getServerClient();
   const { data, error } = await callRpc<StartPayload>(
     client,
@@ -34,6 +43,9 @@ export async function startInstallationAction(orderId: string): Promise<StartRes
     }
     return { ok: false, error: '시작 처리 중 문제가 발생했어요.' };
   }
+
+  revalidatePath(`/order/${orderId}`);
+  revalidatePath('/today');
 
   return {
     ok: Boolean(data?.ok),

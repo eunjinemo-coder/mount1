@@ -1,6 +1,8 @@
 'use server';
 
 import { callRpc, getServerClient } from '@mount/db';
+import { assertTechnicianSession, isValidUuid } from '@mount/lib';
+import { revalidatePath } from 'next/cache';
 
 export type CompleteVariant = 'no_drill' | 'drill_converted';
 export type ConversionMethod = 'verbal' | 'sms' | 'phone';
@@ -23,8 +25,23 @@ export async function completeInstallationAction(args: {
   variant: CompleteVariant;
   conversionMethod?: ConversionMethod;
 }): Promise<CompleteResult> {
+  // P0 — 세션 가드
+  await assertTechnicianSession();
+
+  if (!isValidUuid(args.orderId)) {
+    return { ok: false, error: '잘못된 주문 ID입니다.' };
+  }
+  if (!['no_drill', 'drill_converted'].includes(args.variant)) {
+    return { ok: false, error: '잘못된 완료 유형입니다.' };
+  }
   if (args.variant === 'drill_converted' && !args.conversionMethod) {
     return { ok: false, error: '타공 전환 시 합의 방법을 선택해 주세요 (구두/SMS/전화).' };
+  }
+  if (
+    args.conversionMethod &&
+    !['verbal', 'sms', 'phone'].includes(args.conversionMethod)
+  ) {
+    return { ok: false, error: '잘못된 합의 방법입니다.' };
   }
 
   const client = await getServerClient();
@@ -50,6 +67,9 @@ export async function completeInstallationAction(args: {
     }
     return { ok: false, error: '완료 처리 중 문제가 발생했어요.' };
   }
+
+  revalidatePath(`/order/${args.orderId}`);
+  revalidatePath('/today');
 
   return {
     ok: Boolean(data?.ok),

@@ -25,6 +25,11 @@ export {
   requireRole,
   RedirectError,
   ForbiddenError,
+  UUID_RE,
+  isValidUuid,
+  assertAdminRole,
+  assertTechnicianSession,
+  generateSecurePassword,
 } from './auth';
 export type {
   AdminRole,

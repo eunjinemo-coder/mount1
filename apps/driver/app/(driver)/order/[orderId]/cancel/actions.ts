@@ -1,9 +1,8 @@
 'use server';
 
 import { getServerClient } from '@mount/db';
-import { getSession } from '@mount/lib';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { getSession, isValidUuid } from '@mount/lib';
+import { revalidatePath } from 'next/cache';
 
 export type CancelCategory =
   | 'no_drill_structural'
@@ -25,8 +24,15 @@ export async function submitCancelReportAction(args: {
   photoIds?: string[];
   signaturePlaceholder?: string;
 }): Promise<CancelResult> {
-  if (!UUID_RE.test(args.orderId)) {
+  if (!isValidUuid(args.orderId)) {
     return { ok: false, error: '잘못된 주문 ID입니다.' };
+  }
+  if (
+    !['no_drill_structural', 'conversion_declined', 'customer_absent_3times', 'address_issue', 'tv_model_mismatch', 'etc'].includes(
+      args.category,
+    )
+  ) {
+    return { ok: false, error: '잘못된 취소 사유 카테고리입니다.' };
   }
 
   if (!args.situationNote || args.situationNote.trim().length < 10) {
@@ -82,8 +88,18 @@ export async function submitCancelReportAction(args: {
     .eq('id', args.orderId);
 
   if (statusError) {
-    return { ok: false, error: '주문 상태 업데이트에 실패했어요. 본사에 보고해 주세요.' };
+    // P0-4 — 부분 실패 보상: cancellation_reports 는 들어갔으나 status update 실패
+    // (RLS 차단 등 — 운영자가 수동 status 변경 시 cancellation_reports 와 일관 회복)
+    console.error('[submitCancelReportAction] status update failed (cancel report inserted):', statusError);
+    return {
+      ok: false,
+      error: '취소 보고는 저장됐지만 주문 상태 변경에 실패했어요. 본사에 즉시 알려 주세요.',
+    };
   }
+
+  // P1-5 — revalidate 누락 보완
+  revalidatePath(`/order/${args.orderId}`);
+  revalidatePath('/today');
 
   return { ok: true };
 }
