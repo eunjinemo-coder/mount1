@@ -4,7 +4,59 @@
 
 ---
 
-## 현재 상태 (2026-04-28 · commit 179adb8)
+## 현재 상태 (2026-04-29 · commit 0ae9835)
+
+```
+git: main @ 0ae9835 (R7~R12 누적 50+ commits)
+검증: typecheck 6/6 ✓ · lint 6/6 ✓ · build 2/2 ✓
+라우트: driver 14 + admin 18 = 32 라우트 (+ /settings, /technicians/[id], /orders/[id])
+프로젝트 위치: C:\dev\MOUNT1 (SSD)
+와이어프레임 매칭률: ~92% (R12 i18n + 헌법 No Dead-End + 4 에이전트 P0)
+보안 P0: 0건 (수렴) · P1: 6건 (외부 의존 + 큰 작업)
+인증: 로그아웃 + UserMenu (admin) + driver settings · super_admin 발급 작동
+시공 lifecycle: state machine + atomic cancel RPC + 사진 가드 UI 완료
+이상 징후 알림: B02 패널 작동 (4종 룰 query)
+```
+
+## R12 자율 라운드 결정 사항 (2026-04-28~29 · 4 에이전트 종합)
+
+architect / code-reviewer / general-purpose / security-reviewer 4 에이전트 병렬 점검.
+P0 8 + P1 15 + P2 6 식별. 결제(B07/B08) 외 모두 fix.
+
+신규 commits (이번 라운드):
+- c16d153 P0 batch — assertAdminRole/assertTechnicianSession/CSPRNG/transition guard/actor_id/revalidate
+- c80e41f cancel RPC atomic — 0016 단일 트랜잭션 (architect P0-4 근본 해결)
+- 0ae9835 A06 사진 가드 UI + B02 이상 징후 알림 패널 (와이어 갭)
+
+이전 R12 자율 commits (참조):
+- 1831332 admin UserMenu + 로그아웃 (헌법 제2조 No Dead-End)
+- da9d613 /admin/settings B12 화면 + 사이드바 진입
+- ef2353c error/loading/not-found 8 boundaries (No Dead-End)
+- 302927f /dispatch ERP 표준 (시간 prominent + 점수 progress bar + sticky 요약)
+- 27abeb0 시인성·가시성·가독성 — Pretendard + 한국어 타이포 + 컴포넌트 일관성
+- 4bdfa7a i18n 영문 → 한글 + 일반인 친화 용어
+- d2bd69f callRpc this 손실 + UnassignedBanner 일관
+
+## 잔여 P0/P1 (다음 세션)
+
+자동 fix 가능 (코드만):
+- 사진 무결성 SQL (0017 신규) — sha256/taken_at 검증으로 재사용 차단
+- driver A09 conversion 분리 (현재 A08 흡수 — 와이어 의도 분리 시 별도 화면)
+
+외부 의존 / 큰 작업:
+- B07 결제 링크 (PortOne 가입)
+- B08 결제 현황 + Webhook
+- A04 미니맵 (Kakao SDK)
+- B06 Live (Kakao SDK)
+- A03 driver 캘린더 (큰 신규 화면)
+- A11 driver 정산 (큰 신규 화면)
+- A13 driver 휴가 등록
+- B10 클레임 관리
+- technicians.phone 암호화 (PIPA 강화)
+- rate limiting (Upstash Redis)
+- IP whitelist 검증 (admin proxy.ts)
+
+
 
 ```
 git: main @ 179adb8 (R7~R10 누적 35+ commits)
