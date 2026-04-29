@@ -72,7 +72,14 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const raw = adminRow?.ip_whitelist;
+      // admin_users 미등록 = 인증은 됐으나 어드민 권한 없음 → 차단 (페이지 단 requireRole 보강).
+      if (adminRow === null) {
+        const blocked = new URL('/login', req.url);
+        blocked.searchParams.set('error', 'forbidden');
+        return NextResponse.redirect(blocked);
+      }
+
+      const raw = adminRow.ip_whitelist;
       const whitelist: string[] = Array.isArray(raw)
         ? raw.filter((x): x is string => typeof x === 'string')
         : [];
@@ -86,9 +93,10 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
           return NextResponse.redirect(blocked);
         }
       }
-    } catch {
-      // admin_users 조회 실패 시 — 페이지 단 requireRole 이 2차 방어.
-      // 미들웨어에서 차단하면 정상 계정도 잠길 수 있어 fail-open.
+    } catch (err) {
+      // admin_users 조회 실패 — 페이지 단 requireRole 이 2차 방어.
+      // 미들웨어 차단 시 DB 장애 중 정상 계정도 잠겨 운영 위험 → fail-open 유지하되 로그 확보.
+      console.error('[proxy] admin_users fetch failed', err);
     }
   }
 

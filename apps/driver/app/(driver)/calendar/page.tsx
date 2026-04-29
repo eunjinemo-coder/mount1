@@ -170,15 +170,17 @@ export default async function CalendarPage(props: {
                   {day}
                 </div>
               ))}
-              {cells.map((cell, idx) => {
+              {cells.map((cell) => {
                 const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`;
                 const isToday = key === todayKey;
                 const onVacation = vacationDates.has(key);
                 const day = cell.date.getDay();
+                // 셀 key 는 (월 내/외) 구분 포함하여 안정 — 이전/다음 달 같은 날짜 충돌 방지.
+                const cellKey = `${cell.inMonth ? 'in' : 'out'}-${key}`;
 
                 return (
                   <div
-                    key={idx}
+                    key={cellKey}
                     className={`relative flex aspect-square flex-col items-center justify-start rounded-md p-1 transition-colors ${
                       !cell.inMonth
                         ? 'text-muted-foreground/40'
