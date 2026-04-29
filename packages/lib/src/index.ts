@@ -38,3 +38,4 @@ export type {
   AppSession,
 } from './auth';
 export { toSafeRedirectPath } from './navigation';
+export { rateLimit } from './rate-limit';

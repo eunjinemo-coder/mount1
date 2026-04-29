@@ -1,8 +1,7 @@
 'use server';
 
 import { callRpc, getServerClient } from '@mount/db';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { assertTechnicianSession, isValidUuid, rateLimit } from '@mount/lib';
 
 export type CallOutcome =
   | 'answered'
@@ -23,7 +22,8 @@ export async function logPreCallAction(args: {
   outcome: CallOutcome;
   durationSeconds?: number;
 }): Promise<LogCallResult> {
-  if (!UUID_RE.test(args.orderId)) {
+  await assertTechnicianSession();
+  if (!isValidUuid(args.orderId)) {
     return { ok: false, error: '잘못된 주문 ID입니다.' };
   }
 
@@ -57,8 +57,15 @@ export interface GetPhoneResult {
 
 /** 전화 걸기 직전 일회성 복호화 — 응답은 클라가 저장하지 않고 바로 tel: 딥링크로 소비. */
 export async function getCustomerPhoneAction(orderId: string): Promise<GetPhoneResult> {
-  if (!UUID_RE.test(orderId)) {
+  // P0 — PII 복호화는 rate limit 강화 (브루트포스 차단)
+  const session = await assertTechnicianSession();
+  if (!isValidUuid(orderId)) {
     return { ok: false, error: '잘못된 주문 ID입니다.' };
+  }
+
+  const rl = await rateLimit(`getphone:${session.userId}`, 10, 60);
+  if (!rl.allowed) {
+    return { ok: false, error: '잠시 후 다시 시도해 주세요 (1분에 10회 제한).' };
   }
 
   const client = await getServerClient();

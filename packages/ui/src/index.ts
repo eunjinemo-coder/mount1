@@ -30,3 +30,5 @@ export {
   SheetTitle,
   SheetDescription,
 } from './sheet';
+export { KakaoMap } from './kakao-map';
+export type { KakaoMapProps, KakaoMapMarker } from './kakao-map';
