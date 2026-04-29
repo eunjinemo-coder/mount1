@@ -1,6 +1,7 @@
 'use client';
 
-import { LogOut, User } from 'lucide-react';
+import { Cog, LogOut, User } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { signOutAction } from './actions';
 
@@ -55,9 +56,18 @@ export function UserMenu(props: UserMenuProps): ReactElement {
             <p className="text-sm font-semibold">{props.adminName}</p>
             <p className="text-muted-foreground text-xs">{props.adminRoleLabel}</p>
           </div>
+          <Link
+            className="hover:bg-muted/60 flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors"
+            href="/settings"
+            onClick={() => setOpen(false)}
+            role="menuitem"
+          >
+            <Cog className="text-muted-foreground size-4" aria-hidden />
+            설정
+          </Link>
           <form action={signOutAction}>
             <button
-              className="hover:bg-muted/60 flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors"
+              className="hover:bg-muted/60 border-t flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors"
               role="menuitem"
               type="submit"
             >

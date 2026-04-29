@@ -2,6 +2,7 @@ import { getSession } from '@mount/lib';
 import {
   AlertCircle,
   Coffee,
+  Cog,
   CreditCard,
   Home,
   MapPin,
@@ -35,7 +36,15 @@ export interface AdminShellProps {
   adminName?: string;
   adminRole?: string;
   notificationCount?: number;
-  activeNav?: 'today' | 'orders' | 'dispatch' | 'technicians' | 'live' | 'payouts' | 'coupang';
+  activeNav?:
+    | 'today'
+    | 'orders'
+    | 'dispatch'
+    | 'technicians'
+    | 'live'
+    | 'payouts'
+    | 'coupang'
+    | 'settings';
   children: ReactNode;
 }
 
@@ -47,6 +56,7 @@ const NAV = [
   { id: 'live', label: '실시간', href: '/live', icon: MapPin },
   { id: 'payouts', label: '정산', href: '/payouts', icon: CreditCard },
   { id: 'coupang', label: '쿠팡', href: '/coupang', icon: Coffee },
+  { id: 'settings', label: '설정', href: '/settings', icon: Cog },
 ] as const;
 
 export async function AdminShell(props: AdminShellProps): Promise<ReactElement> {
