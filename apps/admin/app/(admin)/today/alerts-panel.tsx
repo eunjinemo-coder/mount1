@@ -44,18 +44,19 @@ export async function AlertsPanel(): Promise<ReactElement | null> {
   const client = await getServerClient();
   const now = new Date();
   const nowIso = now.toISOString();
-  const past30min = new Date(now.getTime() - 30 * 60_000).toISOString();
+  const next30min = new Date(now.getTime() + 30 * 60_000).toISOString();
   const past2h = new Date(now.getTime() - 2 * 60 * 60_000).toISOString();
   const past12h = new Date(now.getTime() - 12 * 60 * 60_000).toISOString();
   const past24h = new Date(now.getTime() - 24 * 60 * 60_000).toISOString();
 
-  // 1. 시공 30분 전 통화 미기록 — assigned/scheduled + scheduled - 30min < now
+  // 1. 시공 30분 전 통화 미기록 — 지금부터 30분 이내 시공 예정인데 사전 통화 안 됐을 때 알림.
+  //    scheduled_installation_at 이 [now, now+30min] 구간에 들어오는 주문.
   const { count: precallMissing } = await client
     .from('orders')
     .select('id', { count: 'exact', head: true })
     .in('status', DISPATCH_PENDING_STATUSES)
-    .lte('scheduled_installation_at', past30min)
-    .gte('scheduled_installation_at', nowIso);
+    .gte('scheduled_installation_at', nowIso)
+    .lte('scheduled_installation_at', next30min);
 
   // 2. 결제 대기 24h 초과
   const { count: paymentDelayed } = await client

@@ -62,33 +62,33 @@ export async function GET(req: NextRequest): Promise<Response> {
     return new Response(`DB error: ${error.message}`, { status: 500 });
   }
 
-  // 기사별 집계
+  // 기사별 집계 — Map 객체 새로 교체 (헌법 immutability).
   const aggMap = new Map<string, PayoutRow>();
   for (const order of completedOrders ?? []) {
     const techId = order.assigned_technician_id;
     if (!techId) continue;
     const tech = (order as unknown as { technicians?: { display_name?: string; login_id?: string; grade?: string } }).technicians;
 
-    let row = aggMap.get(techId);
-    if (!row) {
-      row = {
-        technician_id: techId,
-        display_name: tech?.display_name ?? '-',
-        login_id: tech?.login_id ?? '-',
-        grade: tech?.grade ?? '-',
-        total_completed: 0,
-        option_a: 0,
-        option_b: 0,
-        option_c: 0,
-        conversions: 0,
-      };
-      aggMap.set(techId, row);
-    }
-    row.total_completed += 1;
-    if (order.option_selected === 'A_stand') row.option_a += 1;
-    if (order.option_selected === 'B_drill') row.option_b += 1;
-    if (order.option_selected === 'C_no_drill') row.option_c += 1;
-    if (order.conversion_from_no_drill) row.conversions += 1;
+    const prev: PayoutRow = aggMap.get(techId) ?? {
+      technician_id: techId,
+      display_name: tech?.display_name ?? '-',
+      login_id: tech?.login_id ?? '-',
+      grade: tech?.grade ?? '-',
+      total_completed: 0,
+      option_a: 0,
+      option_b: 0,
+      option_c: 0,
+      conversions: 0,
+    };
+    const next: PayoutRow = {
+      ...prev,
+      total_completed: prev.total_completed + 1,
+      option_a: prev.option_a + (order.option_selected === 'A_stand' ? 1 : 0),
+      option_b: prev.option_b + (order.option_selected === 'B_drill' ? 1 : 0),
+      option_c: prev.option_c + (order.option_selected === 'C_no_drill' ? 1 : 0),
+      conversions: prev.conversions + (order.conversion_from_no_drill ? 1 : 0),
+    };
+    aggMap.set(techId, next);
   }
 
   const rows = Array.from(aggMap.values()).sort((a, b) =>
