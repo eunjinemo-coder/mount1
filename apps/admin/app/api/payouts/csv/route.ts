@@ -59,7 +59,9 @@ export async function GET(req: NextRequest): Promise<Response> {
     .not('assigned_technician_id', 'is', null);
 
   if (error) {
-    return new Response(`DB error: ${error.message}`, { status: 500 });
+    // 내부 DB 메시지 (테이블/컬럼명) 클라 노출 차단 — 서버 로그에만 상세 기록.
+    console.error('[payout-csv] db error', { code: error.code, message: error.message });
+    return new Response('Internal Server Error', { status: 500 });
   }
 
   // 기사별 집계 — Map 객체 새로 교체 (헌법 immutability).
