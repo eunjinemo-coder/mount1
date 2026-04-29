@@ -1,7 +1,7 @@
 'use server';
 
-import { getServerClient } from '@mount/db';
-import { getSession, isValidUuid } from '@mount/lib';
+import { callRpc, getServerClient } from '@mount/db';
+import { assertTechnicianSession, isValidUuid } from '@mount/lib';
 import { revalidatePath } from 'next/cache';
 
 export type CancelCategory =
@@ -15,8 +15,16 @@ export type CancelCategory =
 export interface CancelResult {
   ok: boolean;
   error?: string;
+  reportId?: string;
+  photoCount?: number;
 }
 
+/**
+ * 취소 보고 제출 — 단일 RPC 으로 atomic 처리 (P0-4 fix).
+ * 이전에는 cancellation_reports INSERT + orders UPDATE 가 별개 트랜잭션이라
+ * 부분 실패 시 데이터 부정합 발생 가능했음.
+ * 0016_rpc_cancel_atomic.sql 의 rpc_technician_request_cancel 가 단일 트랜잭션 보장.
+ */
 export async function submitCancelReportAction(args: {
   orderId: string;
   category: CancelCategory;
@@ -24,6 +32,9 @@ export async function submitCancelReportAction(args: {
   photoIds?: string[];
   signaturePlaceholder?: string;
 }): Promise<CancelResult> {
+  // P0 — 세션 가드
+  await assertTechnicianSession();
+
   if (!isValidUuid(args.orderId)) {
     return { ok: false, error: '잘못된 주문 ID입니다.' };
   }
@@ -34,72 +45,61 @@ export async function submitCancelReportAction(args: {
   ) {
     return { ok: false, error: '잘못된 취소 사유 카테고리입니다.' };
   }
-
   if (!args.situationNote || args.situationNote.trim().length < 10) {
     return { ok: false, error: '현장 상황을 10자 이상 구체적으로 작성해 주세요.' };
   }
 
-  const session = await getSession();
-  if (!session?.technicianId) {
-    return { ok: false, error: '인증 정보가 만료되었습니다. 다시 로그인해 주세요.' };
-  }
-
   const client = await getServerClient();
 
-  // 사진 자동 첨부: caller 가 명시 안 했으면 본 order 의 본인 업로드 사진 모두 자동 link.
-  // RLS 가 본인 사진만 select 하도록 보장 — 권한 우회 없음.
-  let photoIds = args.photoIds ?? [];
-  if (photoIds.length === 0) {
-    const { data: photoRows } = await client
-      .from('photos')
-      .select('id')
-      .eq('order_id', args.orderId)
-      .eq('technician_id', session.technicianId);
-    photoIds = (photoRows ?? []).map((row) => row.id);
-  }
-
-  // RLS 정책 cancel_insert_technician: technician_id = public.technician_id() 검증.
-  // session.technicianId 는 JWT app_metadata.technician_id 에서 추출된 값으로 일치.
-  const placeholderSignature =
-    args.signaturePlaceholder ?? 'placeholder://signature-pending-r5';
-  const { error: insertError } = await client.from('cancellation_reports').insert({
-    order_id: args.orderId,
-    technician_id: session.technicianId,
-    category_primary: args.category,
-    sub_reasons: [],
-    situation_note: args.situationNote,
-    photo_ids: photoIds,
-    signature_image_url: placeholderSignature,
-    coupang_transfer_status: 'pending',
+  const { data, error } = await callRpc<{
+    ok: boolean;
+    report_id?: string;
+    photo_count?: number;
+  }>(client, 'rpc_technician_request_cancel', {
+    p_order_id: args.orderId,
+    p_category: args.category,
+    p_situation_note: args.situationNote,
+    p_signature_image_url:
+      args.signaturePlaceholder ?? 'placeholder://signature-pending-r5',
+    p_photo_ids: args.photoIds ?? null,
   });
 
-  if (insertError) {
-    // 내부 아키텍처 정보(RLS·RPC·R5 등) 사용자 노출 금지.
+  if (error) {
+    const msg = error.message || '';
+    if (msg.includes('unauthorized')) {
+      return { ok: false, error: '인증 정보가 만료되었습니다. 다시 로그인해 주세요.' };
+    }
+    if (msg.includes('not_your_order')) {
+      return { ok: false, error: '본인 배차건이 아닙니다.' };
+    }
+    if (msg.includes('invalid_from_status')) {
+      return {
+        ok: false,
+        error: '현장 도착(또는 시공 중) 상태에서만 취소 보고가 가능해요.',
+      };
+    }
+    if (msg.includes('invalid_category')) {
+      return { ok: false, error: '취소 사유 값이 올바르지 않습니다.' };
+    }
+    if (msg.includes('situation_note_too_short')) {
+      return { ok: false, error: '현장 상황을 10자 이상 구체적으로 작성해 주세요.' };
+    }
+    if (msg.includes('order_not_found')) {
+      return { ok: false, error: '주문을 찾을 수 없습니다.' };
+    }
+    console.error('[submitCancelReportAction] RPC error:', error);
     return {
       ok: false,
       error: '취소 보고 저장에 실패했어요. 본사 카카오톡 채널로 즉시 알려 주세요.',
     };
   }
 
-  // orders 상태 업데이트 (RLS 가 자기 배차건만 허용)
-  const { error: statusError } = await client
-    .from('orders')
-    .update({ status: 'cancel_requested' })
-    .eq('id', args.orderId);
-
-  if (statusError) {
-    // P0-4 — 부분 실패 보상: cancellation_reports 는 들어갔으나 status update 실패
-    // (RLS 차단 등 — 운영자가 수동 status 변경 시 cancellation_reports 와 일관 회복)
-    console.error('[submitCancelReportAction] status update failed (cancel report inserted):', statusError);
-    return {
-      ok: false,
-      error: '취소 보고는 저장됐지만 주문 상태 변경에 실패했어요. 본사에 즉시 알려 주세요.',
-    };
-  }
-
-  // P1-5 — revalidate 누락 보완
   revalidatePath(`/order/${args.orderId}`);
   revalidatePath('/today');
 
-  return { ok: true };
+  return {
+    ok: true,
+    reportId: data?.report_id,
+    photoCount: data?.photo_count,
+  };
 }
