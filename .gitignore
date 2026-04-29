@@ -61,3 +61,5 @@ packages/db/src/types.generated.ts
 # AI assistant artifacts
 context-snapshot.json
 .omx/
+.kkirikkiri/
+harness-core/

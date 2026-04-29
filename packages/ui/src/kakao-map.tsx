@@ -33,6 +33,10 @@ export interface KakaoMapProps {
   className?: string;
 }
 
+interface KakaoMarkerInstance {
+  setMap(map: unknown | null): void;
+}
+
 declare global {
   interface Window {
     kakao?: {
@@ -40,7 +44,7 @@ declare global {
         load: (cb: () => void) => void;
         Map: new (container: HTMLElement, options: unknown) => unknown;
         LatLng: new (lat: number, lng: number) => unknown;
-        Marker: new (options: unknown) => unknown;
+        Marker: new (options: unknown) => KakaoMarkerInstance;
         MarkerImage?: unknown;
         Size?: unknown;
       };
@@ -55,7 +59,7 @@ function loadKakaoSdk(appKey: string): Promise<void> {
   if (window.kakao?.maps) return Promise.resolve();
   if (scriptLoading) return scriptLoading;
 
-  scriptLoading = new Promise<void>((resolve, reject) => {
+  const promise = new Promise<void>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>('script[data-kakao-sdk="1"]');
     if (existing) {
       existing.addEventListener('load', () => {
@@ -82,11 +86,18 @@ function loadKakaoSdk(appKey: string): Promise<void> {
     document.head.appendChild(script);
   });
 
+  // Reject 시 캐시 리셋 — 이후 mount 에서 재시도 가능.
+  scriptLoading = promise.catch((err) => {
+    scriptLoading = null;
+    throw err;
+  });
+
   return scriptLoading;
 }
 
 export function KakaoMap(props: KakaoMapProps): ReactElement {
   const ref = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<KakaoMarkerInstance[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'no-key'>('loading');
   const height = props.height ?? 320;
 
@@ -106,19 +117,39 @@ export function KakaoMap(props: KakaoMapProps): ReactElement {
           center: new window.kakao.maps.LatLng(props.center.lat, props.center.lng),
           level: props.level ?? 4,
         });
+        // 이전 effect 의 마커 제거 후 신규 마커 attach.
+        for (const prev of markersRef.current) {
+          try {
+            prev.setMap(null);
+          } catch {
+            /* noop — SDK 인스턴스 변경 시 안전 무시 */
+          }
+        }
+        const next: KakaoMarkerInstance[] = [];
         for (const m of props.markers ?? []) {
-          new window.kakao.maps.Marker({
+          const marker = new window.kakao.maps.Marker({
             position: new window.kakao.maps.LatLng(m.lat, m.lng),
             map,
             title: m.label ?? '',
           });
+          next.push(marker);
         }
+        markersRef.current = next;
         setStatus('ready');
       })
       .catch(() => setStatus('error'));
 
     return () => {
       cancelled = true;
+      // unmount 시 마커 정리.
+      for (const prev of markersRef.current) {
+        try {
+          prev.setMap(null);
+        } catch {
+          /* noop */
+        }
+      }
+      markersRef.current = [];
     };
   }, [props.center.lat, props.center.lng, props.level, props.markers]);
 

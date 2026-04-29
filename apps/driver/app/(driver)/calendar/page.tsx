@@ -81,11 +81,15 @@ export default async function CalendarPage(props: {
     .gte('scheduled_installation_at', monthStart.toISOString())
     .lte('scheduled_installation_at', monthEnd.toISOString());
 
-  // 휴가 (해당 월에 겹치는 것)
+  // 휴가 (해당 월에 겹치는 것) — start_date <= 월말 AND end_date >= 월초
+  const monthStartDate = monthStart.toISOString().slice(0, 10);
+  const monthEndDate = monthEnd.toISOString().slice(0, 10);
   const { data: vacations } = await client
     .from('technician_vacations')
     .select('start_date, end_date, reason')
-    .eq('technician_id', session.technicianId ?? '');
+    .eq('technician_id', session.technicianId ?? '')
+    .lte('start_date', monthEndDate)
+    .gte('end_date', monthStartDate);
 
   // 일자별 카운트 + 휴가 표시
   const cells = buildMonthGrid(target.getFullYear(), target.getMonth());
@@ -102,10 +106,16 @@ export default async function CalendarPage(props: {
   }
 
   const vacationDates = new Set<string>();
+  const DAY_MS = 24 * 60 * 60 * 1000;
   for (const v of vacations ?? []) {
     const start = new Date(v.start_date as unknown as string);
     const end = new Date(v.end_date as unknown as string);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+    // 시작일 자정 기준 ms 카운터로 안전 순회 — 원본 Date 변형 없음.
+    const startMs = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+    const endMs = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+    for (let ms = startMs; ms <= endMs; ms += DAY_MS) {
+      const d = new Date(ms);
       vacationDates.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
     }
   }

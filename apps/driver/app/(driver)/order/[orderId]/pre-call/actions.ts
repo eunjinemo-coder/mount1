@@ -63,9 +63,15 @@ export async function getCustomerPhoneAction(orderId: string): Promise<GetPhoneR
     return { ok: false, error: '잘못된 주문 ID입니다.' };
   }
 
-  const rl = await rateLimit(`getphone:${session.userId}`, 10, 60);
-  if (!rl.allowed) {
-    return { ok: false, error: '잠시 후 다시 시도해 주세요 (1분에 10회 제한).' };
+  // 키에 orderId 포함 — 동일 기사가 다른 주문으로 phone 스캔 시도 차단.
+  // 추가로 글로벌 키로 기사 단위 누적 시도 제한 (느슨한 상한).
+  const perOrder = await rateLimit(`getphone:${session.userId}:${orderId}`, 5, 60);
+  if (!perOrder.allowed) {
+    return { ok: false, error: '잠시 후 다시 시도해 주세요 (해당 주문 1분에 5회 제한).' };
+  }
+  const perUser = await rateLimit(`getphone:${session.userId}`, 30, 60);
+  if (!perUser.allowed) {
+    return { ok: false, error: '잠시 후 다시 시도해 주세요 (1분에 30회 제한).' };
   }
 
   const client = await getServerClient();

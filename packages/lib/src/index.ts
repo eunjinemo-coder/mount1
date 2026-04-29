@@ -39,3 +39,4 @@ export type {
 } from './auth';
 export { toSafeRedirectPath } from './navigation';
 export { rateLimit } from './rate-limit';
+export { matchCidr, matchAnyCidr } from './cidr';

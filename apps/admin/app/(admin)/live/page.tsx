@@ -55,35 +55,57 @@ export default async function LivePage(): Promise<ReactElement> {
     .in('status', ['assigned', 'en_route', 'on_site', 'in_progress'])
     .gte('scheduled_installation_at', startOfDay.toISOString())
     .lte('scheduled_installation_at', endOfDay.toISOString())
+    .order('scheduled_installation_at', { ascending: true })
     .limit(50);
 
-  const orders = (rawOrders ?? []) as unknown as {
+  // Supabase 1:1 join 결과는 단일 객체로 반환되지만, 클라이언트 타입 추론이 배열로 잡힐 수 있어 정규화.
+  interface CustomerRow {
+    address_lat: number | null;
+    address_lng: number | null;
+    address_region_sigungu: string | null;
+  }
+  interface TechnicianRow {
+    id: string;
+    display_name: string;
+    last_known_lat: number | null;
+    last_known_lng: number | null;
+  }
+  interface RawOrderRow {
     id: string;
     status: string;
     scheduled_installation_at: string | null;
-    customers: { address_lat: number | null; address_lng: number | null; address_region_sigungu: string | null };
-    technicians: { id: string; display_name: string; last_known_lat: number | null; last_known_lng: number | null } | null;
-  }[];
+    customers: CustomerRow | CustomerRow[] | null;
+    technicians: TechnicianRow | TechnicianRow[] | null;
+  }
+  const pickOne = <T,>(v: T | T[] | null | undefined): T | null => {
+    if (Array.isArray(v)) return v[0] ?? null;
+    return v ?? null;
+  };
+  // PII 완화 — 정밀 좌표를 소수점 2자리(~1km)로 반올림하여 마커 표시.
+  // 자택/기사 정확 위치 노출 차단. 약도 식별은 충분.
+  const blurCoord = (n: number): number => Math.round(n * 100) / 100;
 
-  // 핀 — 주문 위치 + 기사 위치
+  const orders = (rawOrders ?? []) as unknown as RawOrderRow[];
   const orderMarkers: KakaoMapMarker[] = [];
   const techMarkers: KakaoMapMarker[] = [];
   for (const o of orders) {
-    if (o.customers?.address_lat && o.customers?.address_lng) {
+    const customer = pickOne(o.customers);
+    const technician = pickOne(o.technicians);
+    if (customer?.address_lat != null && customer?.address_lng != null) {
       orderMarkers.push({
         id: `order-${o.id}`,
-        lat: o.customers.address_lat,
-        lng: o.customers.address_lng,
-        label: `${o.customers.address_region_sigungu ?? ''} · ${STATUS_LABEL[o.status] ?? o.status}`,
+        lat: blurCoord(customer.address_lat),
+        lng: blurCoord(customer.address_lng),
+        label: `${customer.address_region_sigungu ?? ''} · ${STATUS_LABEL[o.status] ?? o.status}`,
         variant: 'default',
       });
     }
-    if (o.technicians?.last_known_lat && o.technicians?.last_known_lng) {
+    if (technician?.last_known_lat != null && technician?.last_known_lng != null) {
       techMarkers.push({
-        id: `tech-${o.technicians.id}`,
-        lat: o.technicians.last_known_lat,
-        lng: o.technicians.last_known_lng,
-        label: o.technicians.display_name,
+        id: `tech-${technician.id}`,
+        lat: blurCoord(technician.last_known_lat),
+        lng: blurCoord(technician.last_known_lng),
+        label: technician.display_name,
         variant: 'highlight',
       });
     }
@@ -146,6 +168,8 @@ export default async function LivePage(): Promise<ReactElement> {
                     const time = o.scheduled_installation_at
                       ? TIME.format(new Date(o.scheduled_installation_at))
                       : '미정';
+                    const customer = pickOne(o.customers);
+                    const technician = pickOne(o.technicians);
                     return (
                       <li
                         key={o.id}
@@ -156,8 +180,8 @@ export default async function LivePage(): Promise<ReactElement> {
                             {time}
                           </p>
                           <p className="text-muted-foreground truncate text-xs">
-                            {o.customers?.address_region_sigungu ?? '-'} ·{' '}
-                            {o.technicians?.display_name ?? '미배정'}
+                            {customer?.address_region_sigungu ?? '-'} ·{' '}
+                            {technician?.display_name ?? '미배정'}
                           </p>
                         </div>
                         <Badge variant={STATUS_VARIANT[o.status] ?? 'outline'}>
