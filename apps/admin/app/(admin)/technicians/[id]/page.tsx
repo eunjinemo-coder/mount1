@@ -1,5 +1,10 @@
 import { getServerClient } from '@mount/db';
-import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
+import {
+  COMPLETED_ORDER_STATUSES,
+  ForbiddenError,
+  RedirectError,
+  requireRole,
+} from '@mount/lib';
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
@@ -64,9 +69,7 @@ export default async function TechnicianDetailPage(props: {
   const totalAssigned = stats?.length ?? 0;
   const completedCount =
     stats?.filter((o) =>
-      ['no_drill_completed', 'drill_converted_completed', 'paid', 'closed'].includes(
-        o.status ?? '',
-      ),
+      (COMPLETED_ORDER_STATUSES as readonly string[]).includes(o.status ?? ''),
     ).length ?? 0;
   const conversionCount = stats?.filter((o) => o.conversion_from_no_drill).length ?? 0;
 

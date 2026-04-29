@@ -1,4 +1,5 @@
 import { getServerClient } from '@mount/db';
+import { DISPATCH_PENDING_STATUSES } from '@mount/lib';
 import { Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import { AlertTriangle, Bell, CreditCard, Phone, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -52,7 +53,7 @@ export async function AlertsPanel(): Promise<ReactElement | null> {
   const { count: precallMissing } = await client
     .from('orders')
     .select('id', { count: 'exact', head: true })
-    .in('status', ['assigned', 'scheduled', 'happy_call_done'])
+    .in('status', DISPATCH_PENDING_STATUSES)
     .lte('scheduled_installation_at', past30min)
     .gte('scheduled_installation_at', nowIso);
 

@@ -1,5 +1,11 @@
 import { getServerClient } from '@mount/db';
-import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
+import {
+  COMPLETED_ORDER_STATUSES,
+  ForbiddenError,
+  IN_PROGRESS_ORDER_STATUSES,
+  RedirectError,
+  requireRole,
+} from '@mount/lib';
 import { Button, Card, CardContent } from '@mount/ui';
 import { Layers, List, MapPin } from 'lucide-react';
 import Link from 'next/link';
@@ -65,10 +71,10 @@ export default async function TodayPage(props: {
   const orders = !todayResult.error && todayResult.data ? todayResult.data : [];
   const technicianName = technicianResult.data?.display_name ?? '기사';
   const completedCount = orders.filter((o) =>
-    ['no_drill_completed', 'drill_converted_completed', 'paid', 'closed'].includes(o.status ?? ''),
+    (COMPLETED_ORDER_STATUSES as readonly string[]).includes(o.status ?? ''),
   ).length;
   const inProgressCount = orders.filter((o) =>
-    ['en_route', 'on_site', 'in_progress'].includes(o.status ?? ''),
+    (IN_PROGRESS_ORDER_STATUSES as readonly string[]).includes(o.status ?? ''),
   ).length;
   const upcomingCount = orders.length - completedCount - inProgressCount;
 

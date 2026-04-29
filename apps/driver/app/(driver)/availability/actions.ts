@@ -40,6 +40,21 @@ export async function addVacationAction(args: {
   const reason = (args.reason ?? '').trim().slice(0, 50);
 
   const client = await getServerClient();
+
+  // 중복 휴가 가드 — 같은 기사의 기존 휴가와 기간이 겹치면 거부.
+  // overlap 조건: existing.start_date <= 신규.end AND existing.end_date >= 신규.start
+  const { data: overlapping } = await client
+    .from('technician_vacations')
+    .select('id', { head: false, count: 'exact' })
+    .eq('technician_id', session.technicianId)
+    .lte('start_date', args.endDate)
+    .gte('end_date', args.startDate)
+    .limit(1);
+
+  if (overlapping && overlapping.length > 0) {
+    return { ok: false, error: '해당 기간에 이미 등록된 휴가가 있어요.' };
+  }
+
   const { error } = await client.from('technician_vacations').insert({
     technician_id: session.technicianId,
     start_date: args.startDate,
@@ -48,7 +63,8 @@ export async function addVacationAction(args: {
   });
 
   if (error) {
-    console.error('[addVacationAction] insert failed:', error);
+    // 민감 정보 노출 방지 — code/message 만 로그.
+    console.error('[addVacationAction] insert failed', { code: error.code, message: error.message });
     return { ok: false, error: '휴가 등록에 실패했어요. 본사에 문의해 주세요.' };
   }
 

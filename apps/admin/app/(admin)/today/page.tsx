@@ -1,5 +1,10 @@
 import { getServerClient } from '@mount/db';
-import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
+import {
+  ForbiddenError,
+  IN_PROGRESS_ORDER_STATUSES,
+  RedirectError,
+  requireRole,
+} from '@mount/lib';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
@@ -17,7 +22,8 @@ const TIME_FORMATTER = new Intl.DateTimeFormat('ko-KR', {
   timeZone: 'Asia/Seoul',
 });
 
-const PROGRESS_STATUSES = ['en_route', 'on_site', 'in_progress'];
+const PROGRESS_STATUSES = IN_PROGRESS_ORDER_STATUSES;
+// admin/today 의 "완료" 는 결제 흐름 포함 — driver 정산 그룹과 다른 의미라 page-local 유지.
 const COMPLETED_STATUSES = [
   'no_drill_completed',
   'drill_converted_completed',

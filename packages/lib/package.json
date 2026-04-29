@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@mount/db": "workspace:*",
+    "@mount/types": "workspace:*",
     "@sentry/nextjs": "^9.0.0",
     "posthog-js": "^1.205.0"
   },

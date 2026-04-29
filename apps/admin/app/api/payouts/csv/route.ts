@@ -1,5 +1,5 @@
 import { getServerClient } from '@mount/db';
-import { getSession } from '@mount/lib';
+import { COMPLETED_ORDER_STATUSES, getSession } from '@mount/lib';
 import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     .select(
       'id, option_selected, conversion_from_no_drill, assigned_technician_id, status, status_changed_at, technicians:assigned_technician_id(id, display_name, login_id, grade)',
     )
-    .in('status', ['no_drill_completed', 'drill_converted_completed', 'paid', 'closed'])
+    .in('status', COMPLETED_ORDER_STATUSES)
     .gte('status_changed_at', from.toISOString())
     .lte('status_changed_at', to.toISOString())
     .not('assigned_technician_id', 'is', null);

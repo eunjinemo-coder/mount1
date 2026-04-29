@@ -98,7 +98,9 @@ function loadKakaoSdk(appKey: string): Promise<void> {
 export function KakaoMap(props: KakaoMapProps): ReactElement {
   const ref = useRef<HTMLDivElement>(null);
   const markersRef = useRef<KakaoMarkerInstance[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'no-key'>('loading');
+  const [status, setStatus] = useState<
+    'loading' | 'ready' | 'no-key' | 'sdk-failed' | 'domain-blocked'
+  >('loading');
   const height = props.height ?? 320;
 
   useEffect(() => {
@@ -137,7 +139,11 @@ export function KakaoMap(props: KakaoMapProps): ReactElement {
         markersRef.current = next;
         setStatus('ready');
       })
-      .catch(() => setStatus('error'));
+      .catch((err: unknown) => {
+        // 도메인 미등록 (가장 흔한 원인) 과 SDK 자체 실패 분리.
+        const msg = err instanceof Error ? err.message : '';
+        setStatus(msg === 'script_error' ? 'domain-blocked' : 'sdk-failed');
+      });
 
     return () => {
       cancelled = true;
@@ -166,15 +172,32 @@ export function KakaoMap(props: KakaoMapProps): ReactElement {
     );
   }
 
-  if (status === 'error') {
+  if (status === 'domain-blocked') {
     return (
       <div
-        className={`bg-destructive/10 text-destructive flex items-center justify-center rounded-md border text-sm ${
+        className={`bg-destructive/10 text-destructive flex items-center justify-center rounded-md border px-3 py-4 text-center text-sm ${
           props.className ?? ''
         }`}
         style={{ height }}
       >
-        <span>지도를 불러오지 못했어요. 도메인 등록을 확인해 주세요.</span>
+        <span>
+          지도 도메인이 등록되어 있지 않아요.
+          <br />
+          Kakao Developers 콘솔에서 현재 도메인을 추가해 주세요.
+        </span>
+      </div>
+    );
+  }
+
+  if (status === 'sdk-failed') {
+    return (
+      <div
+        className={`bg-destructive/10 text-destructive flex items-center justify-center rounded-md border px-3 py-4 text-center text-sm ${
+          props.className ?? ''
+        }`}
+        style={{ height }}
+      >
+        <span>지도 SDK를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</span>
       </div>
     );
   }

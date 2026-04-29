@@ -1,5 +1,10 @@
 import { getServerClient } from '@mount/db';
-import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
+import {
+  ForbiddenError,
+  LIVE_DASHBOARD_STATUSES,
+  RedirectError,
+  requireRole,
+} from '@mount/lib';
 import { Badge, Card, CardContent, CardHeader, CardTitle, KakaoMap, type KakaoMapMarker } from '@mount/ui';
 import { MapPin } from 'lucide-react';
 import { redirect } from 'next/navigation';
@@ -52,7 +57,7 @@ export default async function LivePage(): Promise<ReactElement> {
     .select(
       'id, status, scheduled_installation_at, customers!inner(address_lat, address_lng, address_region_sigungu), technicians:assigned_technician_id(id, display_name, last_known_lat, last_known_lng)',
     )
-    .in('status', ['assigned', 'en_route', 'on_site', 'in_progress'])
+    .in('status', LIVE_DASHBOARD_STATUSES)
     .gte('scheduled_installation_at', startOfDay.toISOString())
     .lte('scheduled_installation_at', endOfDay.toISOString())
     .order('scheduled_installation_at', { ascending: true })

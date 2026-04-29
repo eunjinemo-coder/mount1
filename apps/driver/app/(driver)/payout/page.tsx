@@ -1,5 +1,5 @@
 import { getServerClient } from '@mount/db';
-import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
+import { COMPLETED_ORDER_STATUSES, ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import { TrendingUp, Wallet } from 'lucide-react';
 import Link from 'next/link';
@@ -9,13 +9,6 @@ import { DriverShell } from '../_layout/driver-shell';
 
 export const metadata = { title: '정산' };
 
-const COMPLETED_STATUSES = [
-  'no_drill_completed',
-  'drill_converted_completed',
-  'paid',
-  'closed',
-];
-
 const DATE = new Intl.DateTimeFormat('ko-KR', {
   month: 'short',
   day: 'numeric',
@@ -24,6 +17,9 @@ const DATE = new Intl.DateTimeFormat('ko-KR', {
 });
 
 interface DayRow {
+  /** ISO 안정 key (YYYY-MM-DD) — list key + 정렬용 */
+  key: string;
+  /** 한국어 포맷 표시 — Intl.DateTimeFormat 결과 */
   date: string;
   count: number;
   options: { A: number; B: number; C: number; conversion: number };
@@ -56,31 +52,37 @@ export default async function PayoutPage(props: {
     .from('orders')
     .select('id, status, option_selected, conversion_from_no_drill, status_changed_at')
     .eq('assigned_technician_id', session.technicianId ?? '')
-    .in('status', COMPLETED_STATUSES)
+    .in('status', COMPLETED_ORDER_STATUSES)
     .gte('status_changed_at', monthStart.toISOString())
     .lte('status_changed_at', monthEnd.toISOString())
     .order('status_changed_at', { ascending: false });
 
-  // 일자별 그룹
+  // 일자별 그룹 — Map 객체를 새 객체로 교체 (헌법 immutability).
   const byDay = new Map<string, DayRow>();
   for (const o of orders ?? []) {
     if (!o.status_changed_at) continue;
     const d = new Date(o.status_changed_at);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    let row = byDay.get(key);
-    if (!row) {
-      row = {
-        date: DATE.format(d),
-        count: 0,
-        options: { A: 0, B: 0, C: 0, conversion: 0 },
-      };
-      byDay.set(key, row);
-    }
-    row.count += 1;
-    if (o.option_selected === 'A_stand') row.options.A += 1;
-    if (o.option_selected === 'B_drill') row.options.B += 1;
-    if (o.option_selected === 'C_no_drill') row.options.C += 1;
-    if (o.conversion_from_no_drill) row.options.conversion += 1;
+    const isoKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`;
+    const prev = byDay.get(isoKey) ?? {
+      key: isoKey,
+      date: DATE.format(d),
+      count: 0,
+      options: { A: 0, B: 0, C: 0, conversion: 0 },
+    };
+    const next: DayRow = {
+      key: prev.key,
+      date: prev.date,
+      count: prev.count + 1,
+      options: {
+        A: prev.options.A + (o.option_selected === 'A_stand' ? 1 : 0),
+        B: prev.options.B + (o.option_selected === 'B_drill' ? 1 : 0),
+        C: prev.options.C + (o.option_selected === 'C_no_drill' ? 1 : 0),
+        conversion: prev.options.conversion + (o.conversion_from_no_drill ? 1 : 0),
+      },
+    };
+    byDay.set(isoKey, next);
   }
   const days = Array.from(byDay.values());
 
@@ -162,7 +164,7 @@ export default async function PayoutPage(props: {
               <ul className="space-y-2">
                 {days.map((d) => (
                   <li
-                    key={d.date}
+                    key={d.key}
                     className="flex items-center justify-between rounded-md border px-3 py-2.5"
                   >
                     <div>
