@@ -69,7 +69,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
       const { data: adminRow } = await client
         .from('admin_users')
         .select('ip_whitelist')
-        .eq('user_id', user.id)
+        .eq('auth_user_id', user.id)
         .maybeSingle();
 
       // admin_users 미등록 = 인증은 됐으나 어드민 권한 없음 → 차단 (페이지 단 requireRole 보강).
