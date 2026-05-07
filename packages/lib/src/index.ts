@@ -46,3 +46,5 @@ export {
   LIVE_DASHBOARD_STATUSES,
   DISPATCH_PENDING_STATUSES,
 } from './order-status';
+export { geocodeAddress } from './kakao-geocoding';
+export type { GeocodingResult } from './kakao-geocoding';
