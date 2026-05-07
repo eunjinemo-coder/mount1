@@ -4,66 +4,72 @@ import { callRpc, getServerClient } from '@mount/db';
 import { assertTechnicianSession, isValidUuid } from '@mount/lib';
 import { revalidatePath } from 'next/cache';
 
-export type CompleteVariant = 'no_drill' | 'drill_converted';
-export type ConversionMethod = 'verbal' | 'sms' | 'phone';
-
 export interface CompleteResult {
   ok: boolean;
   error?: string;
   newStatus?: string;
-  conversionDiff?: number;
 }
 
-interface CompletePayload {
+interface AtomicPayload {
   ok: boolean;
   new_status?: string;
-  conversion_diff?: number;
 }
 
 export async function completeInstallationAction(args: {
   orderId: string;
-  variant: CompleteVariant;
-  conversionMethod?: ConversionMethod;
+  optionSelected: 'B_drill' | 'C_no_drill';
+  conversion: boolean;
+  consentConfirmed: boolean;
+  memo?: string;
 }): Promise<CompleteResult> {
-  // P0 — 세션 가드
+  // セッションガード
   await assertTechnicianSession();
 
   if (!isValidUuid(args.orderId)) {
     return { ok: false, error: '잘못된 주문 ID입니다.' };
   }
-  if (!['no_drill', 'drill_converted'].includes(args.variant)) {
-    return { ok: false, error: '잘못된 완료 유형입니다.' };
-  }
-  if (args.variant === 'drill_converted' && !args.conversionMethod) {
-    return { ok: false, error: '타공 전환 시 합의 방법을 선택해 주세요 (구두/SMS/전화).' };
-  }
-  if (
-    args.conversionMethod &&
-    !['verbal', 'sms', 'phone'].includes(args.conversionMethod)
-  ) {
-    return { ok: false, error: '잘못된 합의 방법입니다.' };
+  if (!['B_drill', 'C_no_drill'].includes(args.optionSelected)) {
+    return { ok: false, error: '잘못된 시공 옵션입니다.' };
   }
 
-  const client = await getServerClient();
-  const { data, error } = await callRpc<CompletePayload>(client, 'rpc_technician_complete', {
+  const supabase = await getServerClient();
+
+  // Pre-fetch photo counts server-side (RLS filtered — technician only sees own photos)
+  const { data: photos } = await supabase
+    .from('photos')
+    .select('slot')
+    .eq('order_id', args.orderId);
+
+  const preCount = (photos ?? []).filter((p) =>
+    ['pre_tv_screen', 'pre_wall'].includes(p.slot),
+  ).length;
+  const postCount = (photos ?? []).filter((p) =>
+    ['post_front', 'post_left', 'post_right'].includes(p.slot),
+  ).length;
+
+  const { data, error } = await callRpc<AtomicPayload>(supabase, 'complete_install_atomic', {
     p_order_id: args.orderId,
-    p_variant: args.variant,
-    p_conversion_agreed_method: args.conversionMethod ?? null,
+    p_option_selected: args.optionSelected,
+    p_conversion: args.conversion,
+    p_consent_confirmed: args.consentConfirmed,
+    p_memo: args.memo ?? '',
+    p_photo_pre_count: preCount,
+    p_photo_post_count: postCount,
   });
 
   if (error) {
     const msg = error.message || '';
-    if (msg.includes('missing_post_photos')) {
-      return { ok: false, error: '완료 사진 3장(정면·좌·우)이 부족해요. 사진 메뉴에서 업로드 후 다시 시도해 주세요.' };
-    }
-    if (msg.includes('conversion_method_required')) {
-      return { ok: false, error: '타공 전환 시 합의 방법이 필요합니다.' };
-    }
-    if (msg.includes('invalid_from_status')) {
-      return { ok: false, error: '현재 상태에서는 완료할 수 없어요. 시공 시작 후 진행해 주세요.' };
-    }
-    if (msg.includes('not_your_order')) {
+    if (msg.includes('unauthorized') || msg.includes('forbidden')) {
       return { ok: false, error: '본인 배차건이 아닙니다.' };
+    }
+    if (msg.includes('invalid_status')) {
+      return { ok: false, error: '현재 상태에서는 완료할 수 없어요.' };
+    }
+    if (msg.includes('order_not_found')) {
+      return { ok: false, error: '주문을 찾을 수 없습니다.' };
+    }
+    if (msg.includes('invalid_option')) {
+      return { ok: false, error: '잘못된 시공 옵션입니다.' };
     }
     return { ok: false, error: '완료 처리 중 문제가 발생했어요.' };
   }
@@ -71,9 +77,9 @@ export async function completeInstallationAction(args: {
   revalidatePath(`/order/${args.orderId}`);
   revalidatePath('/today');
 
+  const payload = data as AtomicPayload | null;
   return {
-    ok: Boolean(data?.ok),
-    newStatus: data?.new_status,
-    conversionDiff: data?.conversion_diff,
+    ok: Boolean(payload?.ok),
+    newStatus: payload?.new_status,
   };
 }
