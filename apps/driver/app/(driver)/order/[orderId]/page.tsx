@@ -3,10 +3,10 @@ import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import {
   AlertTriangle,
-  Camera,
   ChevronLeft,
   FileText,
   MapPin,
+  Navigation,
   Phone,
   PhoneCall,
   Tv,
@@ -17,13 +17,11 @@ import type { ReactElement } from 'react';
 
 export const metadata = { title: '주문 상세' };
 
-type Tab = 'overview' | 'photos' | 'issues' | 'calls';
+type Tab = 'overview' | 'issues';
 
 const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: 'overview', label: '개요', icon: FileText },
-  { id: 'photos', label: '사진', icon: Camera },
   { id: 'issues', label: '이슈', icon: AlertTriangle },
-  { id: 'calls', label: '통화', icon: PhoneCall },
 ];
 
 const DATETIME_FORMATTER = new Intl.DateTimeFormat('ko-KR', {
@@ -59,16 +57,6 @@ const OPTION_LABEL: Record<string, string> = {
   A_stand: '스탠드',
   B_drill: '벽걸이 (타공)',
   C_no_drill: '벽걸이 (무타공)',
-};
-
-const CALL_OUTCOME_LABEL: Record<string, string> = {
-  answered: '통화 완료',
-  no_answer: '부재중',
-  busy: '통화 중',
-  unreachable: '연결 안됨',
-  manual_marked_done: '수동 완료',
-  customer_postponed: '고객 연기',
-  customer_cancelled: '고객 취소',
 };
 
 const ISSUE_CATEGORY_LABEL: Record<string, string> = {
@@ -114,7 +102,7 @@ export default async function OrderDetailPage(props: {
     order.customer_id
       ? client
           .from('v_customer_for_technician')
-          .select('*')
+          .select('phone_tail4, address_region_sido, address_region_sigungu, address_lat, address_lng')
           .eq('id', order.customer_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -142,15 +130,14 @@ export default async function OrderDetailPage(props: {
   const postCount = photos.filter((p) =>
     ['post_front', 'post_left', 'post_right'].includes(p.slot),
   ).length;
-  const preCallDone = callLogs.some(
-    (c) =>
-      c.type === 'pre_arrival_30min' &&
-      ['answered', 'manual_marked_done'].includes(c.call_outcome ?? ''),
-  );
+  // CONTEXT.md: 사전통화 = 시도 행위. outcome (no_answer/busy/etc) 무관 — 시도 기록 자체가 의미.
+  const preCallDone = callLogs.some((c) => c.type === 'pre_arrival_30min');
   const region = [customer?.address_region_sido, customer?.address_region_sigungu]
     .filter(Boolean)
     .join(' ');
   const phoneTail4 = customer?.phone_tail4 ?? '';
+  const addressLat = customer?.address_lat ?? null;
+  const addressLng = customer?.address_lng ?? null;
   const scheduled = order.scheduled_installation_at
     ? DATETIME_FORMATTER.format(new Date(order.scheduled_installation_at))
     : '시간 미정';
@@ -176,14 +163,7 @@ export default async function OrderDetailPage(props: {
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            const count =
-              tab.id === 'photos'
-                ? photos.length
-                : tab.id === 'issues'
-                  ? issues.length
-                  : tab.id === 'calls'
-                    ? callLogs.length
-                    : 0;
+            const count = tab.id === 'issues' ? issues.length : 0;
             return (
               <Button
                 asChild
@@ -227,11 +207,35 @@ export default async function OrderDetailPage(props: {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <p className="text-base">{region || '주소 정보 없음'}</p>
-                <p className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <Phone className="size-4" />
-                  ***-****-{phoneTail4 || '????'}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-base">{region || '주소 정보 없음'}</p>
+                  {region ? (
+                    <Link
+                      aria-label="카카오 네비"
+                      className="hover:text-foreground text-muted-foreground"
+                      href={
+                        addressLat !== null && addressLng !== null
+                          ? `kakaonavi://navigate?dest_x=${addressLng}&dest_y=${addressLat}&dest_name=${encodeURIComponent(region)}`
+                          : `kakaomap://search?q=${encodeURIComponent(region)}`
+                      }
+                    >
+                      <Navigation className="size-5" />
+                    </Link>
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <Phone className="size-4" />
+                    ***-****-{phoneTail4 || '????'}
+                  </p>
+                  <Link
+                    aria-label="사전 통화"
+                    className="hover:text-foreground text-muted-foreground"
+                    href={`/order/${orderId}/pre-call`}
+                  >
+                    <PhoneCall className="size-5" />
+                  </Link>
+                </div>
               </CardContent>
             </Card>
 
@@ -292,30 +296,7 @@ export default async function OrderDetailPage(props: {
 
             <ActionButtons orderId={order.id} status={order.status} />
           </>
-        ) : activeTab === 'photos' ? (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">사진 ({photos.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">시공 전 (필수 2장)</span>
-                <span className={preCount >= 2 ? 'text-success' : 'text-destructive'}>
-                  {preCount}/2
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">완료 (필수 3장)</span>
-                <span className={postCount >= 3 ? 'text-success' : 'text-muted-foreground'}>
-                  {postCount}/3
-                </span>
-              </div>
-              <Button asChild className="w-full" size="lg">
-                <Link href={`/order/${orderId}/photos`}>사진 업로드 화면 열기</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : activeTab === 'issues' ? (
+        ) : (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">이슈 ({issues.length})</CardTitle>
@@ -345,47 +326,8 @@ export default async function OrderDetailPage(props: {
                 </ul>
               )}
               <p className="text-muted-foreground text-xs">
-                * 신규 이슈 신고는 R8 작업에서 추가 예정. 긴급 시 본사 카카오톡 채널.
+                * 신규 이슈 신고는 Slice 6 작업에서 추가 예정. 긴급 시 본사 카카오톡 채널.
               </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">통화 기록 ({callLogs.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {callLogs.length === 0 ? (
-                <p className="text-muted-foreground text-sm">통화 기록이 없습니다.</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {callLogs.map((log) => (
-                    <li className="rounded-md border p-3" key={log.id}>
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline">
-                          {CALL_OUTCOME_LABEL[log.call_outcome ?? ''] ?? log.call_outcome ?? '-'}
-                        </Badge>
-                        <span className="text-muted-foreground text-xs">
-                          {log.called_at
-                            ? SHORT_DATETIME.format(new Date(log.called_at))
-                            : '-'}
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        {log.type === 'pre_arrival_30min'
-                          ? '30분 전'
-                          : log.type === 'post_arrival'
-                            ? '도착 후'
-                            : '수동'}
-                        {log.call_duration_seconds ? ` · ${log.call_duration_seconds}s` : ''}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Button asChild className="w-full" size="lg" variant="outline">
-                <Link href={`/order/${orderId}/pre-call`}>30분 전 통화 기록 추가</Link>
-              </Button>
             </CardContent>
           </Card>
         )}
@@ -395,47 +337,36 @@ export default async function OrderDetailPage(props: {
 }
 
 function ActionButtons({ orderId, status }: { orderId: string; status: string }): ReactElement {
-  if (status === 'assigned' || status === 'en_route') {
+  const COMPLETED_STATUSES = ['no_drill_completed', 'drill_converted_completed', 'paid', 'closed'];
+
+  if (status === 'assigned') {
     return (
-      <div className="grid gap-3">
+      <div>
         <Button asChild className="w-full" size="lg">
-          <Link href={`/order/${orderId}/start`}>
-            {status === 'assigned' ? '출발' : '현장 도착'}
+          <Link href={`/order/${orderId}/photos`}>완료</Link>
+        </Button>
+        <div className="border-t border-border mt-6 pt-4 text-center">
+          <Link
+            href={`/order/${orderId}/cancel`}
+            className="text-destructive text-xs font-semibold hover:underline"
+          >
+            ⚠ 시공 취소 보고
           </Link>
-        </Button>
-        <Button asChild className="w-full" size="lg" variant="outline">
-          <Link href={`/order/${orderId}/pre-call`}>30분 전 통화 기록</Link>
-        </Button>
+          <p className="text-muted-foreground mt-1 text-[10px]">
+            현장에서 시공 불가 시 — 본사 검수 후 처리
+          </p>
+        </div>
       </div>
     );
   }
-  if (status === 'on_site') {
+  if (COMPLETED_STATUSES.includes(status)) {
     return (
-      <div className="grid gap-3">
-        <Button asChild className="w-full" size="lg">
-          <Link href={`/order/${orderId}/start`}>시공 시작</Link>
-        </Button>
-        <Button asChild className="w-full" size="lg" variant="outline">
-          <Link href={`/order/${orderId}/cancel`}>취소 보고</Link>
-        </Button>
-      </div>
-    );
-  }
-  if (status === 'in_progress') {
-    return (
-      <div className="grid gap-3">
-        <Button asChild className="w-full" size="lg">
-          <Link href={`/order/${orderId}/complete`}>시공 완료</Link>
-        </Button>
-        <Button asChild className="w-full" size="lg" variant="outline">
-          <Link href={`/order/${orderId}/photos`}>사진 업로드</Link>
-        </Button>
-      </div>
+      <p className="text-muted-foreground py-4 text-center text-sm">이 주문은 완료되었습니다.</p>
     );
   }
   return (
     <p className="text-muted-foreground py-4 text-center text-sm">
-      현재 상태에서는 진행할 액션이 없어요.
+      이 주문은 v1 워크플로 상태입니다. 본사 카카오톡 채널로 문의.
     </p>
   );
 }
