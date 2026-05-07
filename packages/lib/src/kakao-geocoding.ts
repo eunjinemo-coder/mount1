@@ -36,12 +36,12 @@ export async function geocodeAddress(
   }
 
   const body = (await res.json()) as {
-    documents: Array<{
+    documents: {
       x: string;
       y: string;
       road_address: { address_name: string } | null;
       address: { address_name: string } | null;
-    }>;
+    }[];
   };
 
   if (!Array.isArray(body?.documents)) return null;
