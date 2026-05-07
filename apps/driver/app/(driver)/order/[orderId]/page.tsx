@@ -14,6 +14,7 @@ import {
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
+import { ScheduleEditModal } from './_components/schedule-edit-modal';
 
 export const metadata = { title: '주문 상세' };
 
@@ -191,8 +192,13 @@ export default async function OrderDetailPage(props: {
         {activeTab === 'overview' ? (
           <>
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base">예약 시각</CardTitle>
+                <ScheduleEditModal
+                  orderId={order.id}
+                  currentScheduledAt={order.scheduled_installation_at}
+                  status={order.status}
+                />
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-semibold">{scheduled}</p>
