@@ -14,6 +14,7 @@ import {
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
+import { IssueForm } from './_components/issue-form';
 import { ScheduleEditModal } from './_components/schedule-edit-modal';
 
 export const metadata = { title: '주문 상세' };
@@ -116,7 +117,7 @@ export default async function OrderDetailPage(props: {
       .limit(20),
     client
       .from('issues')
-      .select('id, category, note, reported_at')
+      .select('id, category, note, reported_at, admin_response_text, admin_response_at')
       .eq('order_id', orderId)
       .order('reported_at', { ascending: false })
       .limit(10),
@@ -125,7 +126,15 @@ export default async function OrderDetailPage(props: {
   const customer = customerResult.data;
   const photos = photosResult.data ?? [];
   const callLogs = callLogsResult.data ?? [];
-  const issues = issuesResult.data ?? [];
+  // admin_response_text / admin_response_at added by migration 0017 — not yet in generated types
+  const issues = (issuesResult.data ?? []) as unknown as {
+    id: string;
+    category: string;
+    note: string | null;
+    reported_at: string | null;
+    admin_response_text: string | null;
+    admin_response_at: string | null;
+  }[];
 
   const preCount = photos.filter((p) => ['pre_tv_screen', 'pre_wall'].includes(p.slot)).length;
   const postCount = photos.filter((p) =>
@@ -303,39 +312,52 @@ export default async function OrderDetailPage(props: {
             <ActionButtons orderId={order.id} status={order.status} />
           </>
         ) : (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">이슈 ({issues.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {issues.length === 0 ? (
-                <p className="text-muted-foreground text-sm">이 주문에 보고된 이슈가 없습니다.</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {issues.map((issue) => (
-                    <li className="rounded-md border p-3" key={issue.id}>
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline">
-                          {ISSUE_CATEGORY_LABEL[issue.category] ?? issue.category}
-                        </Badge>
-                        <span className="text-muted-foreground text-xs">
-                          {issue.reported_at
-                            ? SHORT_DATETIME.format(new Date(issue.reported_at))
-                            : '-'}
-                        </span>
-                      </div>
-                      {issue.note ? (
-                        <p className="text-muted-foreground mt-1 text-xs">{issue.note}</p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="text-muted-foreground text-xs">
-                * 신규 이슈 신고는 Slice 6 작업에서 추가 예정. 긴급 시 본사 카카오톡 채널.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <IssueForm orderId={order.id} />
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">이슈 이력 ({issues.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {issues.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    보고된 이슈가 없습니다.
+                  </p>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {issues.map((issue) => (
+                      <li className="rounded-md border p-3" key={issue.id}>
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline">
+                            {ISSUE_CATEGORY_LABEL[issue.category] ?? issue.category}
+                          </Badge>
+                          <span className="text-muted-foreground text-xs">
+                            {issue.reported_at
+                              ? SHORT_DATETIME.format(new Date(issue.reported_at))
+                              : '-'}
+                          </span>
+                        </div>
+                        {issue.note ? (
+                          <p className="text-muted-foreground mt-1 text-xs">{issue.note}</p>
+                        ) : null}
+                        {issue.admin_response_text ? (
+                          <div className="mt-2 rounded-md border-l-4 border-l-emerald-500 bg-emerald-50/50 px-2 py-1">
+                            <p className="text-xs font-semibold text-emerald-700">
+                              ✓ 본사 응답{' '}
+                              {issue.admin_response_at
+                                ? `(${SHORT_DATETIME.format(new Date(issue.admin_response_at))})`
+                                : ''}
+                            </p>
+                            <p className="text-xs text-emerald-900">{issue.admin_response_text}</p>
+                          </div>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </main>
