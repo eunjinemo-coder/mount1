@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import './globals.css';
 import { PostHogProvider } from './PostHogProvider';
 
+// driver도 RLS + 세션 의존 — build time prerender 비활성화.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: {
     default: '마운트파트너스 기사앱',
