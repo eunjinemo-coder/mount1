@@ -37,9 +37,9 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''} https://*.posthog.com https://browser.sentry-cdn.com https://*.kakao.com https://dapi.kakao.com`,
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.supabase.co https://*.posthog.com",
-              "font-src 'self' data:",
+              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.posthog.com https://*.daumcdn.net",
+              "font-src 'self' data: https://cdn.jsdelivr.net",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://dapi.kakao.com",
               "media-src 'self' blob:",
               "worker-src 'self' blob:",

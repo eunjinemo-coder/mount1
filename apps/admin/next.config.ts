@@ -20,14 +20,15 @@ const nextConfig: NextConfig = {
           {
             // CSP — admin 은 driver 보다 더 엄격 (외부 unsafe-eval 제거 + 더 좁은 host)
             // dev 에서만 'unsafe-eval' 허용 — React dev runtime (콜스택 재구성·HMR) 요구.
+            // jsdelivr: Pretendard 폰트 CDN. Kakao: /live 지도 SDK (admin도 driver와 동일 host 허용).
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''} https://*.posthog.com https://browser.sentry-cdn.com`,
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.supabase.co",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
+              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''} https://*.posthog.com https://browser.sentry-cdn.com https://*.kakao.com https://dapi.kakao.com`,
+              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.daumcdn.net",
+              "font-src 'self' data: https://cdn.jsdelivr.net",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://dapi.kakao.com",
               "media-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
