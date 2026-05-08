@@ -1,5 +1,6 @@
 import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
+import { Button, Card, CardContent } from '@mount/ui';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
@@ -45,8 +46,8 @@ export default async function PhotosPage(props: {
 
   if (!order) notFound();
 
-  // 사진 업로드는 on_site / in_progress 에서만 (RLS 정책 photos_insert_technician 과 일치)
-  const ALLOWED = ['on_site', 'in_progress'] as const;
+  // 사진 업로드는 assigned/en_route/on_site/in_progress 에서 허용 (RLS v2 migration §1.3 확장)
+  const ALLOWED = ['assigned', 'en_route', 'on_site', 'in_progress'] as const;
   if (!ALLOWED.includes(order.status as (typeof ALLOWED)[number])) {
     redirect(`/order/${orderId}`);
   }
@@ -85,6 +86,11 @@ export default async function PhotosPage(props: {
     signedUrl: photosBySlot.get(slot)?.signedUrl ?? null,
   });
 
+  // 필수 사진 업로드 진행률
+  const preCount = SLOTS_PRE.filter((s) => photosBySlot.has(s)).length;
+  const postCount = SLOTS_POST.filter((s) => photosBySlot.has(s)).length;
+  const photoShortfall = preCount < 2 || postCount < 3;
+
   return (
     <main className="bg-background safe-top safe-bottom min-h-dvh px-4 py-6">
       <div className="mx-auto max-w-screen-md space-y-6">
@@ -97,6 +103,14 @@ export default async function PhotosPage(props: {
             시공 전 2장 (TV·벽) → 시공 → 시공 후 3장 (정면·좌·우) 순서로 촬영해 주세요.
           </p>
         </header>
+
+        {/* 진행률 히어로 카드 */}
+        <Card>
+          <CardContent className="py-3 text-center">
+            <p className="text-2xl font-bold tabular-nums">{preCount + postCount}/5</p>
+            <p className="text-muted-foreground mt-1 text-xs">필수 사진 진행률</p>
+          </CardContent>
+        </Card>
 
         <PhotoGrid
           orderId={order.id}
@@ -115,6 +129,18 @@ export default async function PhotosPage(props: {
           phase="추가 (옵션)"
           slots={SLOT_EXTRA.map(buildSlot)}
         />
+
+        {/* 업로드 완료 CTA */}
+        <div className="space-y-2 pb-4">
+          {photoShortfall ? (
+            <p className="text-amber-700 text-sm">
+              필수 사진이 부족합니다. 다음 화면에서 사유 입력 후 진행할 수 있습니다.
+            </p>
+          ) : null}
+          <Button asChild className="w-full" size="lg">
+            <Link href={`/order/${orderId}/complete`}>업로드 완료 → 시공 완료</Link>
+          </Button>
+        </div>
       </div>
     </main>
   );

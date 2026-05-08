@@ -56,6 +56,7 @@ export const OrderSchema = z.object({
   happy_call_result: HappyCallResultSchema.nullable(),
   wall_type: WallTypeSchema.nullable(),
   special_notes: z.string().nullable(),
+  customer_consent_confirmed: z.boolean().default(false),
   conversion_from_no_drill: z.boolean().nullable(),
   conversion_difference_amount: z.number().nullable(),
   conversion_agreed_method: ConversionAgreedMethodSchema.nullable(),

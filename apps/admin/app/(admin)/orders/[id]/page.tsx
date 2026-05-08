@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../../_layout/admin-shell';
+import { IssueResponseForm } from './_components/issue-response-form';
 import { OrderMutateCard } from './order-mutate-card';
 
 export const metadata = { title: '주문 상세' };
@@ -66,6 +67,9 @@ export default async function OrderDetailPage(props: {
   const canMutate =
     !!session?.adminRole &&
     ['super_admin', 'cs_admin', 'dispatch_admin'].includes(session.adminRole);
+  const canRespondIssue =
+    !!session?.adminRole &&
+    ['super_admin', 'cs_admin', 'ops_admin'].includes(session.adminRole);
 
   const client = await getServerClient();
 
@@ -106,7 +110,7 @@ export default async function OrderDetailPage(props: {
           .maybeSingle()
       : Promise.resolve({ data: null }),
     client.from('photos').select('id, slot, supabase_path, uploaded_at').eq('order_id', id),
-    client.from('issues').select('id, category, note, reported_at').eq('order_id', id).order('reported_at', { ascending: false }),
+    client.from('issues').select('id, category, note, reported_at, admin_response_text, admin_response_at').eq('order_id', id).order('reported_at', { ascending: false }),
     client.from('call_logs').select('id, type, call_outcome, called_at').eq('order_id', id).order('called_at', { ascending: false }),
     client
       .from('audit_events')
@@ -119,7 +123,15 @@ export default async function OrderDetailPage(props: {
 
   const tech = (techRes as { data: { id: string; display_name: string; phone: string; grade: string } | null }).data;
   const photoCount = photosRes.data?.length ?? 0;
-  const issues = issuesRes.data ?? [];
+  // admin_response_text / admin_response_at / admin_responder_id added by migration 0017 — not yet in generated types
+  const issues = (issuesRes.data ?? []) as unknown as {
+    id: string;
+    category: string;
+    note: string | null;
+    reported_at: string | null;
+    admin_response_text: string | null;
+    admin_response_at: string | null;
+  }[];
   const calls = callsRes.data ?? [];
   const events = (eventsRes.data ?? []) as unknown as {
     id: string;
@@ -255,6 +267,50 @@ export default async function OrderDetailPage(props: {
                         <span className="text-muted-foreground text-xs whitespace-nowrap">
                           {DATETIME.format(new Date(e.occurred_at))}
                         </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">이슈 ({issues.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {issues.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">보고된 이슈 없음</p>
+                ) : (
+                  <ul className="space-y-4 text-sm">
+                    {issues.map((issue) => (
+                      <li key={issue.id} className="rounded-md border p-3">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline">{issue.category}</Badge>
+                          <span className="text-muted-foreground text-xs">
+                            {issue.reported_at
+                              ? DATETIME.format(new Date(issue.reported_at))
+                              : '-'}
+                          </span>
+                        </div>
+                        {issue.note ? (
+                          <p className="text-muted-foreground mt-1 text-xs">{issue.note}</p>
+                        ) : null}
+                        {issue.admin_response_text ? (
+                          <div className="mt-2 rounded-md border-l-4 border-l-emerald-500 bg-emerald-50/50 px-2 py-1">
+                            <p className="text-xs font-semibold text-emerald-700">
+                              ✓ 응답됨{' '}
+                              {issue.admin_response_at
+                                ? `(${DATETIME.format(new Date(issue.admin_response_at))})`
+                                : ''}
+                            </p>
+                            <p className="text-xs text-emerald-900">{issue.admin_response_text}</p>
+                          </div>
+                        ) : canRespondIssue ? (
+                          <IssueResponseForm issueId={issue.id} orderId={id} />
+                        ) : (
+                          <p className="text-muted-foreground mt-1 text-xs">미응답 (응답 권한 없음)</p>
+                        )}
                       </li>
                     ))}
                   </ul>
