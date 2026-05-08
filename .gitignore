@@ -54,8 +54,9 @@ supabase/.temp/
 # Vercel
 .vercel/
 
-# Generated DB types (정상 위치는 packages/db/src/, root 의 동명 파일은 잘못된 redirect 산출물)
-packages/db/src/types.generated.ts
+# Generated DB types — Vercel CI에는 supabase access key 없어 빌드 시 자동 생성 불가.
+# packages/db/src/types.generated.ts 는 git에 commit (배포 빌드 의존).
+# 단 root 의 동명 파일은 잘못된 redirect 산출물이므로 ignore 유지.
 /types.generated.ts
 
 # AI assistant artifacts
