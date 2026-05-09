@@ -31,8 +31,9 @@ export default async function CancelPage(props: {
 
   if (!order) notFound();
 
-  // 취소 리포트는 on_site / in_progress 상태에서만 가능 (현장 도착 후)
-  const CANCELLABLE = ['on_site', 'in_progress'] as const;
+  // v2 단축 워크플로 — 취소 리포트는 assigned 부터 가능 (단일 점프 패턴 ADR 0001).
+  // 기존 v1 진행중 상태(en_route/on_site/in_progress)도 호환 유지.
+  const CANCELLABLE = ['assigned', 'en_route', 'on_site', 'in_progress'] as const;
   if (!CANCELLABLE.includes(order.status as (typeof CANCELLABLE)[number])) {
     redirect(`/order/${orderId}`);
   }

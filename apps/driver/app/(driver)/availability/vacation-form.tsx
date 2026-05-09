@@ -32,11 +32,8 @@ export function VacationForm(): ReactElement {
       try {
         const r = await addVacationAction({ startDate, endDate, reason });
         if (r.ok) {
-          setSuccess('휴가가 등록됐어요.');
-          setStartDate('');
-          setEndDate('');
-          setReason('');
-          router.refresh();
+          // 등록 성공 → 캘린더로 자동 이동 (사용자가 등록 결과를 캘린더에서 확인)
+          router.push('/calendar');
         } else {
           setError(r.error ?? '등록 실패');
         }
