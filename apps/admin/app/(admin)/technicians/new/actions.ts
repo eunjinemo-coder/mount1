@@ -75,7 +75,9 @@ export async function createTechnicianAction(
     email: fakeEmail,
     password: tempPassword,
     email_confirm: true,
-    app_metadata: { provider: 'email' },
+    // 핵심: user_type 클레임을 미리 박아야 RLS 의 public.technician_id() 가 동작.
+    // technician_id 자체는 technicians INSERT 후 알기 때문에 아래에서 backfill.
+    app_metadata: { provider: 'email', user_type: 'technician' },
     user_metadata: { display_name: input.displayName },
   });
 
@@ -117,6 +119,16 @@ export async function createTechnicianAction(
       ok: false,
       error: '기사 등록에 실패했습니다. 관리자에게 문의해 주세요.',
     };
+  }
+
+  // 핵심: technician_id 클레임 backfill — RLS 의 public.technician_id() 가 본인 주문 식별 가능하게.
+  // 누락 시 driver /today, /order/[id] 등 RLS 적용 view·table 모두 빈 결과 반환.
+  const { error: claimError } = await adminClient.auth.admin.updateUserById(authUserId, {
+    app_metadata: { provider: 'email', user_type: 'technician', technician_id: tech.id },
+  });
+  if (claimError) {
+    console.error('[createTechnicianAction] technician_id claim backfill failed:', claimError);
+    // 하지만 발급 자체는 성공 — 베타 단계에선 SQL 로 보강 가능.
   }
 
   // P2 — revalidate 누락 보완
