@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   transpilePackages: ['@mount/ui', '@mount/lib', '@mount/db'],
   typedRoutes: true,
+  experimental: {
+    // 사진 업로드 server action — 압축 후에도 4-5MB 가능. 기본 1MB 한도 초과 시
+    // "An unexpected response was received from the server" 에러 발생.
+    serverActions: {
+      bodySizeLimit: '12mb',
+    },
+  },
   async headers() {
     return [
       {
