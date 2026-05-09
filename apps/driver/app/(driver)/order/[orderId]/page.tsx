@@ -230,11 +230,15 @@ export default async function OrderDetailPage(props: {
                       className="hover:text-foreground text-muted-foreground"
                       href={
                         addressLat !== null && addressLng !== null
-                          ? // 카카오 네비 — coord_type=wgs84 명시 (기본은 KATEC 좌표계라 좌표 잘못 해석됨).
-                            // 표준 위경도(WGS84)로 보내려면 반드시 명시.
-                            `kakaonavi://navigate?coord_type=wgs84&dest_x=${addressLng}&dest_y=${addressLat}&dest_name=${encodeURIComponent(region)}`
-                          : `kakaomap://search?q=${encodeURIComponent(region)}`
+                          ? // 카카오맵 universal link — 모든 디바이스 호환.
+                            // 모바일: 카카오맵 앱 자동 호출 → 길찾기 → 카카오 네비/티맵 선택 가능.
+                            // PC: 카카오맵 웹 페이지로 표시.
+                            // 직접 kakaonavi:// scheme 은 SDK appkey + 추가 파라미터 요구하여 호환성 떨어짐.
+                            `https://map.kakao.com/link/to/${encodeURIComponent(region)},${addressLat},${addressLng}`
+                          : `https://map.kakao.com/link/search/${encodeURIComponent(region)}`
                       }
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       <Navigation className="size-5" />
                     </Link>
