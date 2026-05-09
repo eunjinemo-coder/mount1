@@ -40,12 +40,12 @@ export async function completeInstallationAction(args: {
     .select('slot')
     .eq('order_id', args.orderId);
 
-  const preCount = (photos ?? []).filter((p) =>
-    ['pre_tv_screen', 'pre_wall'].includes(p.slot),
-  ).length;
-  const postCount = (photos ?? []).filter((p) =>
-    ['post_front', 'post_left', 'post_right'].includes(p.slot),
-  ).length;
+  // v2 통합 사진: 슬롯 구분 없이 모두 'extra' 로 들어옴.
+  // RPC 의 pre/post 검증(<2, <3)은 "최소 5장" 의미로 재해석.
+  // 5장 이상이면 pre=2, post=3 보내 alert 면제. 5장 미만이면 부족분만큼 보내 alert 트리거.
+  const total = (photos ?? []).length;
+  const preCount = Math.min(2, total);
+  const postCount = total >= 5 ? 3 : Math.max(0, total - 2);
 
   const { data, error } = await callRpc<AtomicPayload>(supabase, 'complete_install_atomic', {
     p_order_id: args.orderId,
