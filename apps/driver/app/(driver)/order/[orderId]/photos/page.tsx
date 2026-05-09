@@ -66,10 +66,17 @@ export default async function PhotosPage(props: {
   for (const p of existingPhotos ?? []) {
     let signedUrl: string | null = null;
     if (p.supabase_path) {
-      const { data: signed } = await client.storage
-        .from('photos-hot')
-        .createSignedUrl(p.supabase_path, 3600);
-      signedUrl = signed?.signedUrl ?? null;
+      // 한 사진의 signedUrl 생성 실패가 전체 페이지 렌더링을 깨뜨리지 않게 try-catch.
+      // (예: storage 정책 변경 / path 일관성 이슈 / network 일시 fail)
+      try {
+        const { data: signed } = await client.storage
+          .from('photos-hot')
+          .createSignedUrl(p.supabase_path, 3600);
+        signedUrl = signed?.signedUrl ?? null;
+      } catch (err) {
+        console.error('[photos] signedUrl 생성 실패:', { slot: p.slot, path: p.supabase_path, err });
+        signedUrl = null;
+      }
     }
     photosBySlot.set(p.slot, {
       path: p.supabase_path,

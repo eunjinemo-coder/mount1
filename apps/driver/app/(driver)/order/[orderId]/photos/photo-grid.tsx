@@ -49,39 +49,47 @@ function PhotoSlot({ orderId, slot }: { orderId: string; slot: PhotoSlotData }):
     setError(null);
 
     startTransition(async () => {
-      // EXIF 먼저 (원본에서) — 압축 후엔 메타 사라짐
-      const exif = await extractExif(file);
-
-      // 클라 측 압축 — 4000px 원본 → 1920px WebP (70%+ 대역폭 절감)
-      let toUpload: File = file;
-      let width = 0;
-      let height = 0;
       try {
-        const r = await compressToWebP(file);
-        toUpload = r.file;
-        width = r.width;
-        height = r.height;
-      } catch {
-        // 압축 실패해도 원본 업로드는 시도
-      }
+        // EXIF 먼저 (원본에서) — 압축 후엔 메타 사라짐
+        const exif = await extractExif(file);
 
-      const formData = new FormData();
-      formData.append('orderId', orderId);
-      formData.append('slot', slot.slot);
-      formData.append('file', toUpload);
-      if (width > 0) formData.append('width', String(width));
-      if (height > 0) formData.append('height', String(height));
-      if (exif.takenAt) formData.append('takenAt', exif.takenAt);
-      if (exif.takenLat != null) formData.append('takenLat', String(exif.takenLat));
-      if (exif.takenLng != null) formData.append('takenLng', String(exif.takenLng));
+        // 클라 측 압축 — 4000px 원본 → 1920px WebP (70%+ 대역폭 절감)
+        let toUpload: File = file;
+        let width = 0;
+        let height = 0;
+        try {
+          const r = await compressToWebP(file);
+          toUpload = r.file;
+          width = r.width;
+          height = r.height;
+        } catch {
+          // 압축 실패해도 원본 업로드는 시도
+        }
 
-      const result = await uploadPhotoAction(formData);
-      if (result.ok) {
-        setUploaded(true);
-      } else if (result.error) {
-        setError(result.error);
+        const formData = new FormData();
+        formData.append('orderId', orderId);
+        formData.append('slot', slot.slot);
+        formData.append('file', toUpload);
+        if (width > 0) formData.append('width', String(width));
+        if (height > 0) formData.append('height', String(height));
+        if (exif.takenAt) formData.append('takenAt', exif.takenAt);
+        if (exif.takenLat != null) formData.append('takenLat', String(exif.takenLat));
+        if (exif.takenLng != null) formData.append('takenLng', String(exif.takenLng));
+
+        const result = await uploadPhotoAction(formData);
+        if (result.ok) {
+          setUploaded(true);
+        } else if (result.error) {
+          setError(result.error);
+        }
+      } catch (e) {
+        // server action 자체 throw 시 error.tsx 표시 안 되게 인라인 에러로 처리
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error('[photo-grid] upload error:', e);
+        setError(`업로드 중 문제가 발생했어요: ${msg.slice(0, 100)}`);
+      } finally {
+        if (inputRef.current) inputRef.current.value = '';
       }
-      if (inputRef.current) inputRef.current.value = '';
     });
   };
 
@@ -135,9 +143,10 @@ function PhotoSlot({ orderId, slot }: { orderId: string; slot: PhotoSlotData }):
         )}
       </button>
 
+      {/* capture 속성 제거 — OS 다이얼로그가 카메라/갤러리 선택 옵션 자동 표시.
+          기존 capture="environment" 는 일부 모바일에서 카메라 강제. */}
       <input
         accept="image/jpeg,image/png,image/webp"
-        capture="environment"
         className="hidden"
         onChange={onFileChange}
         ref={inputRef}
