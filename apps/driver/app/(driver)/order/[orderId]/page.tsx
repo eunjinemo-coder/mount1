@@ -230,7 +230,9 @@ export default async function OrderDetailPage(props: {
                       className="hover:text-foreground text-muted-foreground"
                       href={
                         addressLat !== null && addressLng !== null
-                          ? `kakaonavi://navigate?dest_x=${addressLng}&dest_y=${addressLat}&dest_name=${encodeURIComponent(region)}`
+                          ? // 카카오 네비 — coord_type=wgs84 명시 (기본은 KATEC 좌표계라 좌표 잘못 해석됨).
+                            // 표준 위경도(WGS84)로 보내려면 반드시 명시.
+                            `kakaonavi://navigate?coord_type=wgs84&dest_x=${addressLng}&dest_y=${addressLat}&dest_name=${encodeURIComponent(region)}`
                           : `kakaomap://search?q=${encodeURIComponent(region)}`
                       }
                     >
