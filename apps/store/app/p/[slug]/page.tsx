@@ -65,7 +65,7 @@ export default async function ProductDetailPage({ params }: PageProps): Promise<
         </p>
       </div>
 
-      <StickyOrderCta basePrice={product.basePrice} />
+      <StickyOrderCta basePrice={product.basePrice} slug={product.slug} />
     </main>
   );
 }

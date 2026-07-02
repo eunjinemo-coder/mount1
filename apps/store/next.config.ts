@@ -1,10 +1,22 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
+// Supabase 호스트를 env 에서 파생 — CSP connect-src 에 정확한 오리진 추가용.
+// 파싱 실패/미설정 시 빈 문자열 → *.supabase.co 폴백만 적용.
+const SUPABASE_HOST = (() => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return '';
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
+})();
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ['@mount/ui', '@mount/lib'],
+  transpilePackages: ['@mount/ui', '@mount/lib', '@mount/db'],
   typedRoutes: true,
   async headers() {
     return [
@@ -18,8 +30,9 @@ const nextConfig: NextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           {
             // CSP — store 는 공개 스토어프론트 (검색엔진·카카오톡 링크 미리보기 대상).
-            // driver/admin 과 달리 Supabase·Kakao Maps 미사용 (R1 은 더미 데이터 전용) —
-            // 실제 주문 연동(R3) 시 connect-src 에 Supabase 호스트 추가 예정.
+            // R3 주문 연동: 주문/조회/견적은 server action(동일 출처)으로 Supabase 를 호출하므로
+            // 브라우저 직접 호출은 없지만, 향후 클라이언트 측 Supabase 호출 대비 + 방어적으로
+            // connect-src 에 Supabase 호스트를 추가한다(env 파생 + *.supabase.co 폴백).
             // dev 에서만 'unsafe-eval' 허용 — React dev runtime (콜스택 재구성·HMR) 요구.
             key: 'Content-Security-Policy',
             value: [
@@ -28,7 +41,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
               "img-src 'self' data: blob: https://*.posthog.com",
               "font-src 'self' data: https://cdn.jsdelivr.net",
-              "connect-src 'self' https://*.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
+              `connect-src 'self' https://*.supabase.co${SUPABASE_HOST ? ` ${SUPABASE_HOST}` : ''} https://*.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io`,
               "media-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",

@@ -1,53 +1,41 @@
 'use client';
 
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { useMemo, useState, type ReactElement } from 'react';
+import { Field, inputCls } from '@/components/form/field';
+import { LIMITS, PHONE_PREFIX_RE, normalizePhoneDigits } from '@/lib/order-validation';
+import { submitQuoteAction } from '@/app/quote/actions';
 
 /**
- * S6 대량 견적요청 폼 — UI 전용.
- *
- * TODO(R3): 제출은 현재 disabled. server action 연결 시:
- *   1) phone 은 이미 숫자만 남기도록 정규화됨(아래 onChange). store_quote_requests.phone 의
- *      DB CHECK 가 숫자만 허용(하이픈 불허)하므로 제출 직전 digitsOnly 값을 그대로 전송.
- *   2) 서버에서 zod 재검증(상호/담당자 1~100, phone 01X 10~11자리, message 1~1000).
- *   3) 성공 시 완료 상태 표시 + PostHog `store_quote_submit` 이벤트.
+ * S6 대량 견적요청 폼.
+ * 검증 상수·정규식은 lib/order-validation 단일 원천 공유(quoteSchema 와 동일 규칙).
+ * 제출은 submitQuoteAction(server action) → store_quote_requests anon INSERT.
  */
-
-const LIMITS = {
-  company: { min: 1, max: 100 },
-  contact: { min: 1, max: 100 },
-  message: { min: 1, max: 1000 },
-} as const;
-
-// DB CHECK(0021_store.sql: ^01[016789][0-9]{7,8}$)와 접두 일치 유지 — R3 server action zod와 공유 상수화 권장
-const PHONE_PREFIX_RE = /^01[016789]/;
 
 interface FormState {
   company: string;
-  contact: string;
+  contactName: string;
   phone: string; // digits only
   message: string;
 }
 
-interface FieldErrors {
-  company?: string;
-  contact?: string;
-  phone?: string;
-  message?: string;
-}
+type FieldKey = keyof FormState;
+type FieldErrors = Partial<Record<FieldKey, string>>;
 
-const EMPTY: FormState = { company: '', contact: '', phone: '', message: '' };
+const EMPTY: FormState = { company: '', contactName: '', phone: '', message: '' };
 
 function validate(state: FormState): FieldErrors {
   const errors: FieldErrors = {};
 
   const company = state.company.trim();
-  if (company.length < LIMITS.company.min) errors.company = '상호를 입력해 주세요.';
-  else if (company.length > LIMITS.company.max) errors.company = '상호는 100자 이내로 입력해 주세요.';
+  if (company.length < LIMITS.quoteCompany.min) errors.company = '상호를 입력해 주세요.';
+  else if (company.length > LIMITS.quoteCompany.max)
+    errors.company = '상호는 100자 이내로 입력해 주세요.';
 
-  const contact = state.contact.trim();
-  if (contact.length < LIMITS.contact.min) errors.contact = '담당자명을 입력해 주세요.';
-  else if (contact.length > LIMITS.contact.max)
-    errors.contact = '담당자명은 100자 이내로 입력해 주세요.';
+  const contact = state.contactName.trim();
+  if (contact.length < LIMITS.quoteContact.min) errors.contactName = '담당자명을 입력해 주세요.';
+  else if (contact.length > LIMITS.quoteContact.max)
+    errors.contactName = '담당자명은 100자 이내로 입력해 주세요.';
 
   const phone = state.phone;
   if (phone.length === 0) errors.phone = '휴대폰 번호를 입력해 주세요.';
@@ -56,8 +44,8 @@ function validate(state: FormState): FieldErrors {
   else if (!PHONE_PREFIX_RE.test(phone)) errors.phone = '01로 시작하는 휴대폰 번호를 입력해 주세요.';
 
   const message = state.message.trim();
-  if (message.length < LIMITS.message.min) errors.message = '문의 내용을 입력해 주세요.';
-  else if (message.length > LIMITS.message.max)
+  if (message.length < LIMITS.quoteMessage.min) errors.message = '문의 내용을 입력해 주세요.';
+  else if (message.length > LIMITS.quoteMessage.max)
     errors.message = '문의 내용은 1,000자 이내로 입력해 주세요.';
 
   return errors;
@@ -65,52 +53,88 @@ function validate(state: FormState): FieldErrors {
 
 export function QuoteForm(): ReactElement {
   const [state, setState] = useState<FormState>(EMPTY);
-  const [touched, setTouched] = useState<Record<keyof FormState, boolean>>({
+  const [touched, setTouched] = useState<Record<FieldKey, boolean>>({
     company: false,
-    contact: false,
+    contactName: false,
     phone: false,
     message: false,
   });
+  const [serverErrors, setServerErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | undefined>();
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const errors = useMemo(() => validate(state), [state]);
+  const clientErrors = useMemo(() => validate(state), [state]);
 
   const update =
-    (field: keyof FormState) =>
+    (field: FieldKey) =>
     (value: string): void => {
-      const next = field === 'phone' ? value.replace(/\D/g, '').slice(0, 11) : value;
+      const next = field === 'phone' ? normalizePhoneDigits(value).slice(0, 11) : value;
       setState((prev) => ({ ...prev, [field]: next }));
+      setServerErrors((prev) => ({ ...prev, [field]: undefined }));
     };
 
-  const markTouched = (field: keyof FormState) => (): void =>
+  const markTouched = (field: FieldKey) => (): void =>
     setTouched((prev) => ({ ...prev, [field]: true }));
 
-  const showError = (field: keyof FormState): string | undefined =>
-    touched[field] ? errors[field] : undefined;
+  const showError = (field: FieldKey): string | undefined =>
+    serverErrors[field] ?? (touched[field] ? clientErrors[field] : undefined);
+
+  const onSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (submitting) return;
+    setTouched({ company: true, contactName: true, phone: true, message: true });
+    if (Object.keys(validate(state)).length > 0) return;
+
+    setSubmitting(true);
+    setFormError(undefined);
+    setServerErrors({});
+
+    try {
+      const result = await submitQuoteAction(state);
+      if (result.ok) {
+        setDone(true);
+      } else {
+        setServerErrors(result.fieldErrors ?? {});
+        setFormError(result.formError);
+      }
+    } catch {
+      setFormError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <div className="rounded-xl border border-input p-8 text-center">
+        <div className="bg-success/10 mx-auto flex size-14 items-center justify-center rounded-full">
+          <CheckCircle2 className="text-success size-8" aria-hidden />
+        </div>
+        <h2 className="mt-4 text-lg font-bold">견적 문의가 접수됐어요</h2>
+        <p className="text-muted-foreground mt-2 text-sm leading-7">
+          남겨주신 연락처로 담당자가 회신드립니다. 감사합니다.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <form
-      className="space-y-5"
-      noValidate
-      onSubmit={(e) => {
-        e.preventDefault();
-        // TODO(R3): server action 호출. 현재는 제출 비활성.
-      }}
-    >
+    <form className="space-y-5" noValidate onSubmit={onSubmit}>
       <Field
         label="상호"
         htmlFor="company"
         required
         count={state.company.length}
-        max={LIMITS.company.max}
+        max={LIMITS.quoteCompany.max}
         error={showError('company')}
       >
         <input
           id="company"
           name="company"
           type="text"
-          inputMode="text"
           autoComplete="organization"
-          maxLength={LIMITS.company.max}
+          maxLength={LIMITS.quoteCompany.max}
           value={state.company}
           onChange={(e) => update('company')(e.target.value)}
           onBlur={markTouched('company')}
@@ -121,23 +145,23 @@ export function QuoteForm(): ReactElement {
 
       <Field
         label="담당자명"
-        htmlFor="contact"
+        htmlFor="contactName"
         required
-        count={state.contact.length}
-        max={LIMITS.contact.max}
-        error={showError('contact')}
+        count={state.contactName.length}
+        max={LIMITS.quoteContact.max}
+        error={showError('contactName')}
       >
         <input
-          id="contact"
-          name="contact"
+          id="contactName"
+          name="contactName"
           type="text"
           autoComplete="name"
-          maxLength={LIMITS.contact.max}
-          value={state.contact}
-          onChange={(e) => update('contact')(e.target.value)}
-          onBlur={markTouched('contact')}
+          maxLength={LIMITS.quoteContact.max}
+          value={state.contactName}
+          onChange={(e) => update('contactName')(e.target.value)}
+          onBlur={markTouched('contactName')}
           placeholder="예: 김현장"
-          className={inputCls(showError('contact'))}
+          className={inputCls(showError('contactName'))}
         />
       </Field>
 
@@ -168,7 +192,7 @@ export function QuoteForm(): ReactElement {
         htmlFor="message"
         required
         count={state.message.length}
-        max={LIMITS.message.max}
+        max={LIMITS.quoteMessage.max}
         error={showError('message')}
         hint="필요 품목·수량·납기·배송지 등을 적어주시면 더 정확한 단가를 드립니다."
       >
@@ -176,7 +200,7 @@ export function QuoteForm(): ReactElement {
           id="message"
           name="message"
           rows={5}
-          maxLength={LIMITS.message.max}
+          maxLength={LIMITS.quoteMessage.max}
           value={state.message}
           onChange={(e) => update('message')(e.target.value)}
           onBlur={markTouched('message')}
@@ -185,72 +209,29 @@ export function QuoteForm(): ReactElement {
         />
       </Field>
 
-      {/* TODO(R3): server action 연결 시 disabled 해제 + 로딩/완료 상태 처리 */}
+      {formError && (
+        <p className="text-destructive rounded-lg bg-destructive/10 px-4 py-3 text-sm" role="alert">
+          {formError}
+        </p>
+      )}
+
       <button
         type="submit"
-        disabled
-        aria-disabled="true"
-        className="bg-primary/40 text-primary-foreground flex h-12 w-full cursor-not-allowed items-center justify-center rounded-md text-sm font-semibold"
+        disabled={submitting}
+        className="bg-primary text-primary-foreground flex h-12 w-full items-center justify-center gap-2 rounded-md text-sm font-semibold disabled:opacity-50"
       >
-        견적 접수 · 준비 중
+        {submitting ? (
+          <>
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            접수 중…
+          </>
+        ) : (
+          '견적 문의 접수'
+        )}
       </button>
       <p className="text-muted-foreground text-center text-xs leading-5">
-        접수 기능은 준비 중입니다. 곧 남겨주신 연락처로 담당자가 회신드립니다.
+        접수 후 남겨주신 연락처로 담당자가 회신드립니다.
       </p>
     </form>
-  );
-}
-
-function inputCls(error?: string): string {
-  return [
-    'w-full rounded-lg border bg-background px-3.5 py-3 text-[15px] outline-none transition-colors',
-    'placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-ring focus:ring-offset-0',
-    error ? 'border-destructive' : 'border-input',
-  ].join(' ');
-}
-
-interface FieldProps {
-  label: string;
-  htmlFor: string;
-  required?: boolean;
-  count?: number;
-  max?: number;
-  error?: string;
-  hint?: string;
-  children: ReactElement;
-}
-
-function Field({
-  label,
-  htmlFor,
-  required,
-  count,
-  max,
-  error,
-  hint,
-  children,
-}: FieldProps): ReactElement {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-baseline justify-between">
-        <label htmlFor={htmlFor} className="text-sm font-semibold">
-          {label}
-          {required && <span className="text-destructive ml-0.5">*</span>}
-        </label>
-        {typeof count === 'number' && typeof max === 'number' && (
-          <span className="text-muted-foreground tabular text-xs">
-            {count.toLocaleString('ko-KR')}/{max.toLocaleString('ko-KR')}
-          </span>
-        )}
-      </div>
-      {children}
-      {error ? (
-        <p className="text-destructive text-xs leading-5" role="alert">
-          {error}
-        </p>
-      ) : hint ? (
-        <p className="text-muted-foreground text-xs leading-5">{hint}</p>
-      ) : null}
-    </div>
   );
 }

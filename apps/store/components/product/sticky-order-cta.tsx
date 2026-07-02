@@ -4,14 +4,15 @@ import type { ReactElement } from 'react';
 
 interface Props {
   basePrice: number;
+  slug: string;
 }
 
 /**
  * 하단 sticky CTA.
- * 주 CTA(주문하기)는 R3 주문 플로우 연결 전까지 disabled.
- * 보조 CTA(대량 견적 문의)는 /quote 로 즉시 연결 — 리드 확보 채널.
+ * 주 CTA(주문하기)는 S3 주문서(/order/[slug])로 연결.
+ * 보조 CTA(대량 견적 문의)는 /quote 로 연결 — 리드 확보 채널.
  */
-export function StickyOrderCta({ basePrice }: Props): ReactElement {
+export function StickyOrderCta({ basePrice, slug }: Props): ReactElement {
   return (
     <div className="border-border bg-background/95 safe-bottom fixed inset-x-0 bottom-0 z-fixed border-t backdrop-blur">
       <div className="mx-auto max-w-lg px-5 py-3">
@@ -29,15 +30,12 @@ export function StickyOrderCta({ basePrice }: Props): ReactElement {
           >
             대량 견적 문의
           </Link>
-          {/* TODO(R3): 주문 플로우(S3 /order/[slug]) 연결 시 disabled 해제하고 Link 로 전환 */}
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            className="bg-primary/40 text-primary-foreground flex h-12 flex-[1.4] cursor-not-allowed items-center justify-center rounded-md text-sm font-semibold"
+          <Link
+            href={`/order/${slug}`}
+            className="bg-primary text-primary-foreground flex h-12 flex-[1.4] items-center justify-center rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
           >
-            주문하기 · 준비 중
-          </button>
+            주문하기
+          </Link>
         </div>
       </div>
     </div>
