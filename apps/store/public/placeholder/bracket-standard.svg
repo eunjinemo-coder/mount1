@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">벽걸이프로 무타공 브라켓 스탠다드</title>
+  <desc id="desc">32~55인치 TV용 무타공 벽걸이 브라켓 이미지 플레이스홀더</desc>
+  <defs>
+    <linearGradient id="bg-standard" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eff6ff" />
+      <stop offset="100%" stop-color="#dbeafe" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" rx="24" fill="url(#bg-standard)" />
+
+  <!-- 벽면 TV 실루엣 -->
+  <rect x="220" y="140" width="360" height="220" rx="12" fill="#1e293b" opacity="0.9" />
+  <rect x="236" y="156" width="328" height="188" rx="4" fill="#0f172a" />
+
+  <!-- 무타공 브라켓 (벽 -> TV 연결부) -->
+  <g stroke="#2563eb" stroke-width="10" stroke-linecap="round" fill="none">
+    <path d="M400 360 L400 430" />
+    <path d="M340 400 L460 400" />
+    <path d="M340 400 L340 440" />
+    <path d="M460 400 L460 440" />
+  </g>
+  <circle cx="340" cy="440" r="10" fill="#2563eb" />
+  <circle cx="460" cy="440" r="10" fill="#2563eb" />
+
+  <!-- 하단 라벨 -->
+  <rect x="0" y="470" width="800" height="130" fill="#ffffff" opacity="0.85" />
+  <text x="400" y="520" font-family="'Pretendard', -apple-system, sans-serif" font-size="30" font-weight="700" fill="#1e3a8a" text-anchor="middle">
+    벽걸이프로 무타공 브라켓
+  </text>
+  <text x="400" y="558" font-family="'Pretendard', -apple-system, sans-serif" font-size="24" font-weight="600" fill="#2563eb" text-anchor="middle">
+    스탠다드 · 32~55인치
+  </text>
+</svg>
