@@ -14,6 +14,7 @@ import { captureMessage, rateLimit } from '@mount/lib';
 import { callRpc, getStoreServerClient } from '@/lib/supabase';
 import { getClientIp } from '@/lib/client-ip';
 import { createOrder, type OrderResult } from '@/lib/order-service';
+import { enqueueAdminNewOrder } from '@/lib/admin-notify';
 import {
   ORDER_SUMMARY_COOKIE,
   ORDER_SUMMARY_MAX_AGE,
@@ -52,6 +53,9 @@ export async function submitOrderAction(input: unknown): Promise<OrderResult> {
         maxAge: ORDER_SUMMARY_MAX_AGE,
       },
     );
+
+    // 신규주문 admin 알림 큐잉(best-effort · 구매자 발송 없음 — 비용폭탄 방지 정책)
+    await enqueueAdminNewOrder(supabase, result.orderNo);
   }
 
   return result;
