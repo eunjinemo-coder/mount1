@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useMemo, useState, type ReactElement } from 'react';
 import { Field, inputCls } from '@/components/form/field';
 import { LIMITS, PHONE_PREFIX_RE, normalizePhoneDigits } from '@/lib/order-validation';
@@ -115,6 +116,12 @@ export function QuoteForm(): ReactElement {
         <p className="text-muted-foreground mt-2 text-sm leading-7">
           남겨주신 연락처로 담당자가 회신드립니다. 감사합니다.
         </p>
+        <Link
+          href="/"
+          className="border-input hover:bg-accent mt-6 flex h-12 items-center justify-center rounded-md border text-sm font-semibold transition-colors"
+        >
+          스토어로 돌아가기
+        </Link>
       </div>
     );
   }

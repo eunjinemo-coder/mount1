@@ -51,7 +51,8 @@ export default async function ProductDetailPage({ params }: PageProps): Promise<
         <div className="mt-8 space-y-10">
           <PainPoints items={product.painPoints} />
           <QualityEvidence items={product.qualityPoints} />
-          <ConstructionGallery items={product.gallery} />
+          {/* TODO(실사진 확보 후): hasRealGallery=true 전환 시까지 플레이스홀더 미노출 */}
+          {product.hasRealGallery && <ConstructionGallery items={product.gallery} />}
           <SpecTable rows={product.spec} />
           <WholesalePricing basePrice={product.basePrice} priceTiers={product.priceTiers} />
           <ProductFaq items={product.faq} />

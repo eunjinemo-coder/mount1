@@ -1,28 +1,18 @@
 import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
-import { Badge, Button, Card, CardContent } from '@mount/ui';
-import { AlertCircle } from 'lucide-react';
+import { Button, Card, CardContent } from '@mount/ui';
+import { AlertCircle, X } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../../_layout/admin-shell';
 import { safeCount, safeSelect, storeClient } from '../_lib/shared';
-import { formatDateTime, formatWon, ORDER_STATUS_LABEL } from '../_lib/labels';
-import { OrderRowActions } from './order-row-actions';
+import { OrderRow, type OrderListRow } from './order-row';
 
 export const metadata = { title: '스토어 주문 목록' };
 
-interface OrderRow {
-  id: string;
-  order_no: string;
-  status: string;
-  buyer_name: string;
-  buyer_company: string | null;
-  buyer_phone_tail4: string;
-  depositor_name: string | null;
-  total_amount: number;
-  created_at: string;
-}
+const ORDER_LIST_COLUMNS =
+  'id, order_no, status, buyer_name, buyer_company, buyer_phone_tail4, depositor_name, total_amount, created_at';
 
 const FILTER_GROUPS = [
   { id: 'awaiting_payment', label: '입금대기', statuses: ['awaiting_payment'] },
@@ -37,7 +27,7 @@ const FILTER_GROUPS = [
 const PAGE_SIZE = 25;
 
 export default async function StoreOrdersPage(props: {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; failed?: string }>;
 }): Promise<ReactElement> {
   try {
     await requireRole({ adminRoles: ['super_admin', 'ops_admin', 'auditor'] });
@@ -47,24 +37,29 @@ export default async function StoreOrdersPage(props: {
     throw error;
   }
 
-  const { filter: filterParam } = await props.searchParams;
+  const { filter: filterParam, failed: failedParam } = await props.searchParams;
   const activeFilter = FILTER_GROUPS.find((g) => g.id === filterParam) ?? FILTER_GROUPS[0];
+  const showFailedOnly = failedParam === '1';
 
   const client = storeClient(await getServerClient());
 
-  let query = client
-    .from('store_orders')
-    .select(
-      'id, order_no, status, buyer_name, buyer_company, buyer_phone_tail4, depositor_name, total_amount, created_at',
-    )
-    .order('created_at', { ascending: false })
-    .limit(PAGE_SIZE);
+  // 발송 실패 필터(팀리드 지시 §5): store_message_log!inner 로 embedded filter —
+  // 상태 필터와 무관하게 실패 로그가 달린 주문만 보여준다(어느 상태에서든 실패할 수 있음).
+  let query = showFailedOnly
+    ? client
+        .from('store_orders')
+        .select(`${ORDER_LIST_COLUMNS}, store_message_log!inner(status, attempts)`)
+        .eq('store_message_log.status', 'failed')
+        .gte('store_message_log.attempts', 3)
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE)
+    : client.from('store_orders').select(ORDER_LIST_COLUMNS).order('created_at', { ascending: false }).limit(PAGE_SIZE);
 
-  if (activeFilter.statuses) {
+  if (!showFailedOnly && activeFilter.statuses) {
     query = query.in('status', activeFilter.statuses as unknown as string[]);
   }
 
-  const ordersData = await safeSelect<OrderRow[]>(query);
+  const ordersData = await safeSelect<OrderListRow[]>(query);
   const orders = ordersData ?? [];
 
   const failedCount = await safeCount(
@@ -82,14 +77,26 @@ export default async function StoreOrdersPage(props: {
           <div>
             <h2 className="text-2xl font-bold">스토어 주문</h2>
             <p className="text-muted-foreground text-sm">
-              {activeFilter.label} {orders.length}건 (최근 {PAGE_SIZE}건)
+              {showFailedOnly ? '발송 실패' : activeFilter.label} {orders.length}건
+              {showFailedOnly ? '' : ` (최근 ${PAGE_SIZE}건)`}
             </p>
           </div>
-          {failedCount > 0 ? (
-            <span className="bg-destructive/10 text-destructive flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium">
+          {showFailedOnly ? (
+            <Link
+              className="bg-destructive/10 text-destructive flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium hover:underline"
+              href="/store/orders"
+            >
+              <X className="size-3" aria-hidden />
+              발송 실패 필터 해제
+            </Link>
+          ) : failedCount > 0 ? (
+            <Link
+              className="bg-destructive/10 text-destructive flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium hover:underline"
+              href="/store/orders?failed=1"
+            >
               <AlertCircle className="size-3" aria-hidden />
               발송 실패 {failedCount}건
-            </span>
+            </Link>
           ) : null}
         </header>
 
@@ -117,43 +124,14 @@ export default async function StoreOrdersPage(props: {
                       <th className="text-muted-foreground px-2 py-3 text-left font-semibold">주문번호</th>
                       <th className="text-muted-foreground px-2 py-3 text-left font-semibold">일시</th>
                       <th className="text-muted-foreground px-2 py-3 text-left font-semibold">주문자/상호</th>
-                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">입금자명</th>
-                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">금액</th>
+                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">입금자명 · 금액</th>
                       <th className="text-muted-foreground px-2 py-3 text-left font-semibold">상태</th>
                       <th className="px-2 py-3 text-right" />
                     </tr>
                   </thead>
                   <tbody>
                     {orders.map((o) => (
-                      <tr className="hover:bg-muted/40 border-b transition-colors last:border-0" key={o.id}>
-                        <td className="px-2 py-3 font-mono text-xs font-medium">{o.order_no}</td>
-                        <td className="text-muted-foreground px-2 py-3 tabular-nums">
-                          {formatDateTime(o.created_at)}
-                        </td>
-                        <td className="px-2 py-3">
-                          {o.buyer_name}
-                          {o.buyer_company ? (
-                            <span className="text-muted-foreground"> · {o.buyer_company}</span>
-                          ) : null}
-                          <p className="text-muted-foreground text-xs">***-****-{o.buyer_phone_tail4}</p>
-                        </td>
-                        <td className="px-2 py-3">{o.depositor_name ?? '-'}</td>
-                        <td className="px-2 py-3 font-medium tabular-nums">{formatWon(o.total_amount)}</td>
-                        <td className="px-2 py-3">
-                          <Badge variant="outline">{ORDER_STATUS_LABEL[o.status] ?? o.status}</Badge>
-                        </td>
-                        <td className="px-2 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <OrderRowActions orderId={o.id} status={o.status} />
-                            <Link
-                              className="text-primary hover:bg-primary/5 inline-flex items-center rounded px-2 py-1 text-xs font-medium hover:underline"
-                              href={`/store/orders/${o.id}`}
-                            >
-                              상세 →
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
+                      <OrderRow key={o.id} order={o} />
                     ))}
                   </tbody>
                 </table>

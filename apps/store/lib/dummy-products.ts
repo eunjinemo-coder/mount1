@@ -59,11 +59,13 @@ export interface DummyProduct {
 
   /** 히어로 한줄 가치제안 */
   valueProp: string;
-  /** 신뢰 배지 — PLACEHOLDER 수치 포함, 실적 확정 전까지 예시 */
+  /** 신뢰 배지 — 검증 가능한 정성적 문구만 사용(수치 클레임 금지, 확정 실적 확보 전까지) */
   trustBadges: string[];
   painPoints: PainPoint[];
   qualityPoints: QualityPoint[];
   gallery: GalleryItem[];
+  /** 실 시공 사진 확보 여부 — false 인 동안 갤러리 섹션 자체를 미노출(플레이스홀더 노출 방지) */
+  hasRealGallery: boolean;
   spec: SpecRow[];
   faq: FaqItem[];
 }
@@ -106,7 +108,7 @@ export const DUMMY_PRODUCTS: DummyProduct[] = [
     valueProp:
       '석고보드든 콘크리트든, 무타공으로 55인치까지 흔들림 없이 잡아주는 시공 전용 브라켓입니다.',
     trustBadges: [
-      '월 1,000건 시공 검증', // PLACEHOLDER — 실 시공 실적 확정 후 교체
+      '무타공 전용 설계', // TODO(은진님 실수치): 실제 시공건수·후기 확정 후 교체
       '자재 하자 1년 무상 교체',
       '전국 익영업일 출고',
     ],
@@ -152,6 +154,7 @@ export const DUMMY_PRODUCTS: DummyProduct[] = [
       { scene: 'commercial', caption: '상업 공간 다중 설치' },
       { scene: 'detail', caption: '압착 유닛 고정 디테일' },
     ],
+    hasRealGallery: false, // TODO(실사진 확보 후 true 전환)
     spec: [
       { label: '호환 TV', value: '32~55인치' },
       { label: '최대 하중', value: '45kg' },
@@ -176,7 +179,7 @@ export const DUMMY_PRODUCTS: DummyProduct[] = [
     valueProp:
       '85인치 대형 패널까지, 무타공으로 안전 기준을 지키며 잡아주는 프로 시공용 브라켓입니다.',
     trustBadges: [
-      '월 1,000건 시공 검증', // PLACEHOLDER — 실 시공 실적 확정 후 교체
+      '무타공 전용 설계', // TODO(은진님 실수치): 실제 시공건수·후기 확정 후 교체
       '자재 하자 1년 무상 교체',
       '대형 패널 하중 시험 통과',
     ],
@@ -222,6 +225,7 @@ export const DUMMY_PRODUCTS: DummyProduct[] = [
       { scene: 'bedroom', caption: '안방 65인치 벽면 시공' },
       { scene: 'detail', caption: '4점 압착 보강 디테일' },
     ],
+    hasRealGallery: false, // TODO(실사진 확보 후 true 전환)
     spec: [
       { label: '호환 TV', value: '55~85인치' },
       { label: '최대 하중', value: '70kg' },

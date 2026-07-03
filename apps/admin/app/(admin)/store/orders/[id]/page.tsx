@@ -251,7 +251,7 @@ export default async function StoreOrderDetailPage(props: {
 
           <div>
             {canMutate ? (
-              <PaymentShipmentCard orderId={order.id} status={order.status} />
+              <PaymentShipmentCard orderId={order.id} orderNo={order.order_no} status={order.status} />
             ) : (
               <Card>
                 <CardContent className="text-muted-foreground py-6 text-sm">

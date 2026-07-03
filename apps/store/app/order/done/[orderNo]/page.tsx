@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { CheckCircle2, Copy, Info } from 'lucide-react';
+import { CheckCircle2, Info } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { formatCurrencyKRW, formatDateTimeKST } from '@mount/lib/format';
+import { CopyButton } from '@/components/order/copy-account';
 import { BANK_ACCOUNT, PAYMENT_DEADLINE_HOURS } from '@/lib/bank-info';
 import { ORDER_SUMMARY_COOKIE, verifyOrderSummary } from '@/lib/order-summary-cookie';
 
@@ -42,7 +43,10 @@ export default async function OrderDonePage({ params }: PageProps): Promise<Reac
         {/* 주문번호 */}
         <div className="mt-8 rounded-xl border border-input p-5 text-center">
           <p className="text-muted-foreground text-xs">주문번호</p>
-          <p className="tabular mt-1 text-2xl font-bold tracking-wide">{orderNo}</p>
+          <p className="tabular mt-1 text-2xl font-bold tracking-wide">
+            {orderNo}
+            <CopyButton value={orderNo} label="주문번호 복사" />
+          </p>
         </div>
 
         {/* 입금 안내 */}
@@ -57,7 +61,7 @@ export default async function OrderDonePage({ params }: PageProps): Promise<Reac
               <dt className="text-muted-foreground">계좌번호</dt>
               <dd className="tabular font-medium">
                 {BANK_ACCOUNT.accountNo}
-                <Copy className="text-muted-foreground ml-1 inline size-3.5 align-[-2px]" aria-hidden />
+                <CopyButton value={BANK_ACCOUNT.accountNo} label="계좌번호 복사" />
               </dd>
             </div>
             <div className="flex justify-between gap-3">

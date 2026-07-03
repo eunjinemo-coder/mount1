@@ -6,13 +6,13 @@ interface TrustStat {
 }
 
 /**
- * 신뢰 스트립 — placeholder 수치 3개.
- * TODO(실자료): 아래 수치는 예시. 실 시공 실적·재주문율·출고 데이터 확정 후 교체.
+ * 신뢰 스트립 — 검증 가능한 정성적 문구만 사용(수치 클레임 없음).
+ * TODO(은진님 실수치): 실 시공 실적·재주문율·출고 데이터 확정 후 수치 기반 배지로 교체.
  */
 const STATS: TrustStat[] = [
-  { value: '1,000+', label: '월 시공 검증' }, // PLACEHOLDER
-  { value: '98%', label: '자재 하자 없는 출고' }, // PLACEHOLDER
-  { value: '익일', label: '평균 출고' }, // PLACEHOLDER
+  { value: '무타공', label: '전용 설계' },
+  { value: '실사용', label: '시공 검증' },
+  { value: '익일', label: '출고' },
 ];
 
 export function TrustStrip(): ReactElement {

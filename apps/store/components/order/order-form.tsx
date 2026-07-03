@@ -4,13 +4,52 @@ import { formatCurrencyKRW } from '@mount/lib/format';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
 import { Minus, Plus, TrendingDown, Loader2 } from 'lucide-react';
-import { useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { Field, inputCls } from '@/components/form/field';
 import { BANK_ACCOUNT, PAYMENT_DEADLINE_HOURS } from '@/lib/bank-info';
 import type { OrderCatalog, OrderVariant } from '@/lib/order-catalog';
 import { LIMITS, normalizePhoneDigits } from '@/lib/order-validation';
 import { calcTotalSavings, calcUnitSavings, resolveUnitPrice } from '@/lib/pricing';
 import { submitOrderAction } from '@/app/order/actions';
+
+/** 재방문 구매자용 배송정보 재사용 — 카드·비밀정보 아님(민감정보 저장 없음). */
+const BUYER_INFO_STORAGE_KEY = 'mount-store:buyer-info-v1';
+
+interface SavedBuyerInfo {
+  buyerName: string;
+  buyerPhone: string;
+  buyerCompany: string;
+  shipPostcode: string;
+  shipAddr1: string;
+  shipAddr2: string;
+}
+
+function loadSavedBuyerInfo(): SavedBuyerInfo | null {
+  try {
+    const raw = window.localStorage.getItem(BUYER_INFO_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as SavedBuyerInfo) : null;
+  } catch {
+    return null; // 파싱 실패·프라이빗 모드 등 — 프리필 없이 진행
+  }
+}
+
+function saveBuyerInfo(info: SavedBuyerInfo): void {
+  try {
+    window.localStorage.setItem(BUYER_INFO_STORAGE_KEY, JSON.stringify(info));
+  } catch {
+    // 저장 공간 부족 등 — 핵심 기능(주문 제출) 아니므로 조용히 무시
+  }
+}
+
+function clearSavedBuyerInfo(): void {
+  try {
+    window.localStorage.removeItem(BUYER_INFO_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+const QTY_PRESETS = [10, 25, 50] as const;
 
 type FieldKey =
   | 'buyerName'
@@ -45,10 +84,35 @@ export function OrderForm({ catalog }: Props): ReactElement {
   const [shipAddr2, setShipAddr2] = useState('');
   const [shipMemo, setShipMemo] = useState('');
   const [depositorName, setDepositorName] = useState('');
+  const [prefilled, setPrefilled] = useState(false);
 
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [formError, setFormError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
+
+  // 재방문 구매자 프리필 — 마운트 시 1회, 클라이언트에서만(SSR 미접근)
+  useEffect(() => {
+    const saved = loadSavedBuyerInfo();
+    if (!saved) return;
+    setBuyerName(saved.buyerName);
+    setBuyerPhone(saved.buyerPhone);
+    setBuyerCompany(saved.buyerCompany);
+    setShipPostcode(saved.shipPostcode);
+    setShipAddr1(saved.shipAddr1);
+    setShipAddr2(saved.shipAddr2);
+    setPrefilled(true);
+  }, []);
+
+  const clearPrefill = (): void => {
+    clearSavedBuyerInfo();
+    setBuyerName('');
+    setBuyerPhone('');
+    setBuyerCompany('');
+    setShipPostcode('');
+    setShipAddr1('');
+    setShipAddr2('');
+    setPrefilled(false);
+  };
 
   const variant: OrderVariant | undefined = useMemo(
     () => catalog.variants.find((v) => v.variantId === variantId) ?? catalog.variants[0],
@@ -91,6 +155,7 @@ export function OrderForm({ catalog }: Props): ReactElement {
       });
 
       if (result.ok) {
+        saveBuyerInfo({ buyerName, buyerPhone, buyerCompany, shipPostcode, shipAddr1, shipAddr2 });
         router.push(`/order/done/${result.orderNo}` as Route);
         return; // 리다이렉트 중 submitting 유지(중복 클릭 방지)
       }
@@ -163,7 +228,7 @@ export function OrderForm({ catalog }: Props): ReactElement {
                 aria-label="수량"
                 value={qty}
                 onChange={(e) => clampQty(Number(e.target.value.replace(/\D/g, '')))}
-                className="tabular h-9 w-14 rounded-md border border-input text-center text-[15px] outline-none focus:ring-2 focus:ring-ring"
+                className="tabular h-9 w-24 rounded-md border border-input text-center text-[15px] outline-none focus:ring-2 focus:ring-ring"
               />
               <button
                 type="button"
@@ -175,6 +240,24 @@ export function OrderForm({ catalog }: Props): ReactElement {
                 <Plus className="size-4" aria-hidden />
               </button>
             </div>
+          </div>
+
+          {/* 대량 구매 바로가기 — 재고 내에서만 노출 */}
+          <div className="mt-3 flex gap-2">
+            {QTY_PRESETS.filter((preset) => preset <= maxQty).map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => clampQty(preset)}
+                aria-pressed={qty === preset}
+                className={[
+                  'flex h-11 flex-1 items-center justify-center rounded-md border text-sm font-medium transition-colors',
+                  qty === preset ? 'border-primary bg-primary/5 text-primary' : 'border-input',
+                ].join(' ')}
+              >
+                {preset}개
+              </button>
+            ))}
           </div>
 
           <div className="mt-4 flex items-baseline justify-between border-t border-input pt-3">
@@ -203,6 +286,18 @@ export function OrderForm({ catalog }: Props): ReactElement {
       {/* 주문자 */}
       <section className="space-y-4">
         <h2 className="text-base font-bold">주문자 정보</h2>
+        {prefilled && (
+          <p className="bg-muted/40 text-muted-foreground flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 text-xs leading-5">
+            <span>저장된 정보로 채웠어요</span>
+            <button
+              type="button"
+              onClick={clearPrefill}
+              className="text-foreground shrink-0 underline underline-offset-2"
+            >
+              지우기
+            </button>
+          </p>
+        )}
         <Field label="이름" htmlFor="buyerName" required error={errors.buyerName}>
           <input
             id="buyerName"
