@@ -19,16 +19,16 @@ export function StatusTimeline({ status }: Props): ReactElement {
       <div
         className={[
           'flex items-center gap-3 rounded-xl border p-4',
-          isCancel ? 'border-destructive/30 bg-destructive/5' : 'border-amber-300 bg-amber-50',
+          isCancel ? 'border-destructive/40' : 'border-warning/40',
         ].join(' ')}
       >
         {isCancel ? (
           <XCircle className="text-destructive size-6 shrink-0" aria-hidden />
         ) : (
-          <Clock className="size-6 shrink-0 text-amber-600" aria-hidden />
+          <Clock className="text-warning size-6 shrink-0" aria-hidden />
         )}
         <div>
-          <p className={isCancel ? 'text-destructive font-semibold' : 'font-semibold text-amber-800'}>
+          <p className={isCancel ? 'text-destructive font-semibold' : 'text-warning font-semibold'}>
             {view.terminalLabel}
           </p>
           <p className="text-muted-foreground mt-0.5 text-sm">{view.terminalDesc}</p>

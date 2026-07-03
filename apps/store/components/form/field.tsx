@@ -8,7 +8,7 @@ import type { ReactElement, ReactNode } from 'react';
  */
 export function inputCls(error?: string): string {
   return [
-    'w-full rounded-lg border bg-background px-3.5 py-3 text-[15px] outline-none transition-colors',
+    'w-full rounded-xl border bg-background px-3.5 py-3 text-[15px] outline-none transition-colors',
     'placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-ring focus:ring-offset-0',
     error ? 'border-destructive' : 'border-input',
   ].join(' ');

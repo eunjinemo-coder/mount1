@@ -3,8 +3,9 @@
 import { formatCurrencyKRW } from '@mount/lib/format';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
-import { Minus, Plus, TrendingDown, Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { Minus, Plus, TrendingDown, Loader2, Info } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { AddressSearch } from '@/components/order/address-search';
 import { Field, inputCls } from '@/components/form/field';
 import { BANK_ACCOUNT, PAYMENT_DEADLINE_HOURS } from '@/lib/bank-info';
 import type { OrderCatalog, OrderVariant } from '@/lib/order-catalog';
@@ -49,8 +50,6 @@ function clearSavedBuyerInfo(): void {
   }
 }
 
-const QTY_PRESETS = [10, 25, 50] as const;
-
 type FieldKey =
   | 'buyerName'
   | 'buyerPhone'
@@ -74,6 +73,10 @@ export function OrderForm({ catalog }: Props): ReactElement {
 
   const [variantId, setVariantId] = useState<string>(catalog.variants[0]?.variantId ?? '');
   const [qty, setQty] = useState<number>(1);
+  // 입력칸 표시용 문자열 — 편집 중 빈 값 허용(백스페이스로 지우고 새로 입력).
+  const [qtyText, setQtyText] = useState<string>('1');
+  const [addressManual, setAddressManual] = useState(false);
+  const addr2Ref = useRef<HTMLInputElement>(null);
   const [buyerName, setBuyerName] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
   const [buyerCompany, setBuyerCompany] = useState('');
@@ -125,13 +128,48 @@ export function OrderForm({ catalog }: Props): ReactElement {
   const unitSavings = variant ? calcUnitSavings(variant.basePrice, unitPrice) : 0;
   const totalSavings = variant ? calcTotalSavings(variant.basePrice, unitPrice, qty) : 0;
 
-  const clampQty = (next: number): void => {
+  const clamp = (next: number): number => Math.min(maxQty, Math.max(1, Math.floor(next)));
+
+  // 스텝퍼·확정용 — 숫자와 표시문자열을 함께 갱신.
+  const commitQty = (next: number): void => {
     if (Number.isNaN(next)) return;
-    setQty(Math.min(maxQty, Math.max(1, Math.floor(next))));
+    const clamped = clamp(next);
+    setQty(clamped);
+    setQtyText(String(clamped));
   };
+
+  // 직접 입력 — 빈 값·선행 0 은 편집 중 그대로 두고(스냅 방지), 유효 숫자일 때만 즉시 clamp.
+  // 계산(qty)은 마지막 유효값을 유지하고, 빈/0 은 blur 에서 확정한다.
+  const onQtyInput = (raw: string): void => {
+    const digits = raw.replace(/\D/g, '');
+    if (digits === '' || Number(digits) === 0) {
+      setQtyText(digits);
+      return;
+    }
+    const clamped = clamp(Number(digits));
+    setQty(clamped);
+    setQtyText(String(clamped));
+  };
+
+  const onQtyBlur = (): void => {
+    if (qtyText.trim() === '' || Number(qtyText) < 1) commitQty(qty);
+  };
+
+  // 옵션 변경 등으로 재고 상한이 바뀌면 수량을 상한 안으로 보정.
+  // 두 상태를 각각 순수 업데이터로 갱신(업데이터 안에서 다른 setState 호출하지 않음).
+  useEffect(() => {
+    setQty((q) => Math.min(maxQty, Math.max(1, q)));
+    setQtyText((t) => {
+      const n = Number(t.replace(/\D/g, ''));
+      const safe = Number.isNaN(n) || n < 1 ? 1 : n;
+      return String(Math.min(maxQty, Math.max(1, safe)));
+    });
+  }, [maxQty]);
 
   const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    // 인풋 포커스 중 Enter 제출 시 blur 미선행 → 빈 표시값을 마지막 유효 수량으로 복원(전송 qty 는 이미 유효).
+    if (!qtyText.trim()) setQtyText(String(qty));
     if (submitting || !catalog.seeded || !variant) return;
     setSubmitting(true);
     setErrors({});
@@ -173,9 +211,12 @@ export function OrderForm({ catalog }: Props): ReactElement {
   return (
     <form className="space-y-8" noValidate onSubmit={onSubmit}>
       {!catalog.seeded && (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-          실 상품 데이터 연동 준비 중입니다. 지금은 금액·구성 미리보기만 가능하며, 곧 바로 주문
-          접수가 열립니다.
+        <p className="border-border text-muted-foreground flex items-start gap-2 rounded-xl border px-4 py-3 text-sm leading-6">
+          <Info className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>
+            실 상품 데이터 연동 준비 중입니다. 지금은 금액·구성 미리보기만 가능하며, 곧 바로 주문
+            접수가 열립니다.
+          </span>
         </p>
       )}
 
@@ -191,12 +232,19 @@ export function OrderForm({ catalog }: Props): ReactElement {
                 type="button"
                 onClick={() => setVariantId(v.variantId)}
                 className={[
-                  'flex items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors',
-                  v.variantId === variantId ? 'border-primary bg-primary/5' : 'border-input',
+                  'flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors',
+                  v.variantId === variantId ? 'border-primary' : 'border-input',
                 ].join(' ')}
               >
-                <span className="font-medium">{v.name}</span>
-                <span className="tabular text-muted-foreground">
+                <span className={v.variantId === variantId ? 'font-semibold' : 'font-medium'}>
+                  {v.name}
+                </span>
+                <span
+                  className={[
+                    'tabular',
+                    v.variantId === variantId ? 'text-primary font-semibold' : 'text-muted-foreground',
+                  ].join(' ')}
+                >
                   {formatCurrencyKRW(v.basePrice)}부터
                 </span>
               </button>
@@ -204,20 +252,20 @@ export function OrderForm({ catalog }: Props): ReactElement {
           </div>
         )}
 
-        <div className="rounded-xl border border-input p-4">
-          <div className="flex items-center justify-between">
+        <div className="rounded-2xl border border-input p-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{variant?.name}</p>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 재고 {maxQty.toLocaleString('ko-KR')}개 · {maxQty}개까지 주문 가능
               </p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                aria-label="수량 감소"
-                onClick={() => clampQty(qty - 1)}
-                className="flex size-9 items-center justify-center rounded-md border border-input disabled:opacity-40"
+                aria-label="수량 1개 감소"
+                onClick={() => commitQty(qty - 1)}
+                className="flex size-11 items-center justify-center rounded-xl border border-input text-muted-foreground disabled:opacity-40"
                 disabled={qty <= 1}
               >
                 <Minus className="size-4" aria-hidden />
@@ -226,38 +274,21 @@ export function OrderForm({ catalog }: Props): ReactElement {
                 type="text"
                 inputMode="numeric"
                 aria-label="수량"
-                value={qty}
-                onChange={(e) => clampQty(Number(e.target.value.replace(/\D/g, '')))}
-                className="tabular h-9 w-24 rounded-md border border-input text-center text-[15px] outline-none focus:ring-2 focus:ring-ring"
+                value={qtyText}
+                onChange={(e) => onQtyInput(e.target.value)}
+                onBlur={onQtyBlur}
+                className="tabular h-11 w-20 rounded-xl border border-input text-center text-lg font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-ring"
               />
               <button
                 type="button"
-                aria-label="수량 증가"
-                onClick={() => clampQty(qty + 1)}
-                className="flex size-9 items-center justify-center rounded-md border border-input disabled:opacity-40"
+                aria-label="수량 1개 증가"
+                onClick={() => commitQty(qty + 1)}
+                className="flex size-11 items-center justify-center rounded-xl border border-input text-muted-foreground disabled:opacity-40"
                 disabled={qty >= maxQty}
               >
                 <Plus className="size-4" aria-hidden />
               </button>
             </div>
-          </div>
-
-          {/* 대량 구매 바로가기 — 재고 내에서만 노출 */}
-          <div className="mt-3 flex gap-2">
-            {QTY_PRESETS.filter((preset) => preset <= maxQty).map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => clampQty(preset)}
-                aria-pressed={qty === preset}
-                className={[
-                  'flex h-11 flex-1 items-center justify-center rounded-md border text-sm font-medium transition-colors',
-                  qty === preset ? 'border-primary bg-primary/5 text-primary' : 'border-input',
-                ].join(' ')}
-              >
-                {preset}개
-              </button>
-            ))}
           </div>
 
           <div className="mt-4 flex items-baseline justify-between border-t border-input pt-3">
@@ -287,7 +318,7 @@ export function OrderForm({ catalog }: Props): ReactElement {
       <section className="space-y-4">
         <h2 className="text-base font-bold">주문자 정보</h2>
         {prefilled && (
-          <p className="bg-muted/40 text-muted-foreground flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 text-xs leading-5">
+          <p className="border-border text-muted-foreground flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-xs leading-5">
             <span>저장된 정보로 채웠어요</span>
             <button
               type="button"
@@ -340,7 +371,7 @@ export function OrderForm({ catalog }: Props): ReactElement {
           />
         </Field>
 
-        <label className="flex items-center gap-2.5 rounded-lg border border-input px-4 py-3">
+        <label className="flex items-center gap-2.5 rounded-xl border border-input px-4 py-3">
           <input
             type="checkbox"
             checked={taxInvoice}
@@ -373,32 +404,53 @@ export function OrderForm({ catalog }: Props): ReactElement {
       {/* 배송지 */}
       <section className="space-y-4">
         <h2 className="text-base font-bold">배송지</h2>
-        <Field label="우편번호" htmlFor="shipPostcode" required error={errors.shipPostcode}>
+
+        <AddressSearch
+          onSelected={({ postcode, address }) => {
+            setShipPostcode(postcode);
+            setShipAddr1(address);
+            setAddressManual(false);
+            setErrors((prev) => ({ ...prev, shipPostcode: undefined, shipAddr1: undefined }));
+            requestAnimationFrame(() => addr2Ref.current?.focus());
+          }}
+          onError={() => setAddressManual(true)}
+        />
+
+        <Field
+          label="우편번호"
+          htmlFor="shipPostcode"
+          required
+          error={errors.shipPostcode}
+          hint={addressManual ? '숫자 5자리' : '주소 검색으로 자동 입력됩니다'}
+        >
           <input
             id="shipPostcode"
             inputMode="numeric"
             autoComplete="postal-code"
+            readOnly={!addressManual}
             maxLength={LIMITS.postcode.max}
             value={shipPostcode}
             onChange={(e) => setShipPostcode(e.target.value)}
-            placeholder="12345"
-            className={inputCls(errors.shipPostcode)}
+            placeholder={addressManual ? '12345' : '주소 검색 후 자동 입력'}
+            className={`${inputCls(errors.shipPostcode)}${!addressManual ? ' text-foreground read-only:cursor-default' : ''}`}
           />
         </Field>
         <Field label="주소" htmlFor="shipAddr1" required error={errors.shipAddr1}>
           <input
             id="shipAddr1"
             autoComplete="address-line1"
+            readOnly={!addressManual}
             maxLength={LIMITS.addr1.max}
             value={shipAddr1}
             onChange={(e) => setShipAddr1(e.target.value)}
-            placeholder="도로명 주소"
-            className={inputCls(errors.shipAddr1)}
+            placeholder={addressManual ? '도로명 주소' : '주소 검색 후 자동 입력'}
+            className={`${inputCls(errors.shipAddr1)}${!addressManual ? ' text-foreground read-only:cursor-default' : ''}`}
           />
         </Field>
         <Field label="상세주소 (선택)" htmlFor="shipAddr2" error={errors.shipAddr2}>
           <input
             id="shipAddr2"
+            ref={addr2Ref}
             autoComplete="address-line2"
             maxLength={LIMITS.addr2.max}
             value={shipAddr2}
@@ -429,7 +481,7 @@ export function OrderForm({ catalog }: Props): ReactElement {
       {/* 결제 */}
       <section className="space-y-4">
         <h2 className="text-base font-bold">결제</h2>
-        <div className="rounded-lg border border-input bg-muted/30 px-4 py-3 text-sm leading-6">
+        <div className="rounded-xl border border-input px-4 py-3 text-sm leading-6">
           <p className="font-semibold">무통장입금</p>
           <p className="text-muted-foreground mt-1">
             주문 완료 후 안내되는 계좌로 <b>{PAYMENT_DEADLINE_HOURS}시간 이내</b> 입금해 주세요.
@@ -454,8 +506,12 @@ export function OrderForm({ catalog }: Props): ReactElement {
       </section>
 
       {formError && (
-        <p className="text-destructive rounded-lg bg-destructive/10 px-4 py-3 text-sm" role="alert">
-          {formError}
+        <p
+          className="text-destructive border-destructive/40 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm"
+          role="alert"
+        >
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>{formError}</span>
         </p>
       )}
 
@@ -463,7 +519,7 @@ export function OrderForm({ catalog }: Props): ReactElement {
         type="submit"
         disabled={submitting || !catalog.seeded}
         aria-disabled={submitting || !catalog.seeded}
-        className="bg-primary text-primary-foreground flex h-13 min-h-[52px] w-full items-center justify-center gap-2 rounded-md text-[15px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+        className="bg-primary text-primary-foreground flex h-13 min-h-[52px] w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? (
           <>

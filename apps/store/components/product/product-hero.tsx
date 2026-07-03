@@ -18,7 +18,7 @@ export function ProductHero({ product }: Props): ReactElement {
       <h1 className="mt-2 text-[26px] font-bold leading-tight tracking-ko-tight">{product.name}</h1>
       <p className="text-muted-foreground mt-2 text-[15px] leading-7">{product.valueProp}</p>
 
-      <div className="bg-muted relative mt-5 aspect-[4/3] w-full overflow-hidden rounded-2xl">
+      <div className="bg-muted border-border relative mt-5 aspect-[4/3] w-full overflow-hidden rounded-2xl border">
         <Image
           src={product.imageSrc}
           alt={`${product.name} 대표 이미지`}
@@ -34,9 +34,9 @@ export function ProductHero({ product }: Props): ReactElement {
         {product.trustBadges.map((badge) => (
           <li
             key={badge}
-            className="bg-brand-50 text-brand-700 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+            className="border-border text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium"
           >
-            <ShieldCheck className="size-3.5" aria-hidden />
+            <ShieldCheck className="text-primary size-3.5" aria-hidden />
             {badge}
           </li>
         ))}

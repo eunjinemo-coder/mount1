@@ -22,10 +22,10 @@ export function PainPoints({ items }: Props): ReactElement {
       <ul className="mt-5 space-y-3">
         {items.map((item) => (
           <li key={item.title}>
-            <Card className="border-border/70 shadow-none">
+            <Card className="border-border rounded-2xl shadow-none">
               <CardContent className="flex gap-3 p-4">
                 <span
-                  className="text-warning bg-warning/10 flex size-9 shrink-0 items-center justify-center rounded-full"
+                  className="text-warning border-border flex size-9 shrink-0 items-center justify-center rounded-full border"
                   aria-hidden
                 >
                   <AlertTriangle className="size-[18px]" />

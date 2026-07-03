@@ -19,7 +19,7 @@ export default function StoreError({
   return (
     <main className="bg-background flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm space-y-6 text-center">
-        <div className="bg-destructive/10 mx-auto flex size-16 items-center justify-center rounded-full">
+        <div className="border-border mx-auto flex size-16 items-center justify-center rounded-full border">
           <AlertCircle className="text-destructive size-8" aria-hidden />
         </div>
 

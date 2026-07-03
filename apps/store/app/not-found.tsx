@@ -7,7 +7,7 @@ export default function StoreNotFound(): ReactElement {
   return (
     <main className="bg-background flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm space-y-6 text-center">
-        <div className="bg-muted mx-auto flex size-16 items-center justify-center rounded-full">
+        <div className="border-border mx-auto flex size-16 items-center justify-center rounded-full border">
           <SearchX className="text-muted-foreground size-8" aria-hidden />
         </div>
 

@@ -18,7 +18,7 @@ export function ProductCard({ product }: Props): ReactElement {
 
   return (
     <Link href={`/p/${product.slug}`} className="block">
-      <Card className="overflow-hidden border-border/70 shadow-none transition-shadow hover:shadow-2">
+      <Card className="border-border overflow-hidden rounded-2xl shadow-none transition-colors hover:border-foreground/25">
         <div className="bg-muted relative aspect-[4/3] w-full">
           <Image
             src={product.imageSrc}
@@ -37,7 +37,7 @@ export function ProductCard({ product }: Props): ReactElement {
               <span className="text-muted-foreground ml-1 text-xs font-normal">부터</span>
             </p>
             {bestUnitSavings > 0 && (
-              <span className="bg-brand-50 text-brand-700 tabular rounded-full px-2 py-0.5 text-[11px] font-semibold">
+              <span className="border-border text-muted-foreground tabular rounded-full border px-2 py-0.5 text-[11px] font-semibold">
                 대량 시 개당 {formatCurrencyKRW(bestUnitSavings)}↓
               </span>
             )}

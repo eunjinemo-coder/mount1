@@ -26,13 +26,13 @@ export function StickyOrderCta({ basePrice, slug }: Props): ReactElement {
         <div className="flex gap-2.5">
           <Link
             href="/quote"
-            className="border-input hover:bg-accent flex h-12 flex-1 items-center justify-center rounded-md border text-sm font-semibold transition-colors"
+            className="border-input hover:bg-accent flex h-12 flex-1 items-center justify-center rounded-xl border text-sm font-semibold transition-colors"
           >
             대량 견적 문의
           </Link>
           <Link
             href={`/order/${slug}`}
-            className="bg-primary text-primary-foreground flex h-12 flex-[1.4] items-center justify-center rounded-md text-sm font-semibold transition-opacity hover:opacity-90"
+            className="bg-primary text-primary-foreground flex h-12 flex-[1.4] items-center justify-center rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
           >
             주문하기
           </Link>

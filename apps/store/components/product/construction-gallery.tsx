@@ -8,9 +8,8 @@ interface Props {
 
 /**
  * 시공 사진 갤러리.
- * TODO(실자료): 현재는 GalleryPlaceholder(SVG). 실 시공 사진 수령 시
- *   <GalleryPlaceholder scene={...}/> 자리를 next/image <Image src={photo}/> 로 교체.
- *   figure/figcaption 구조와 캡션은 그대로 재사용 가능.
+ * TODO(실자료): 현재는 중립 GalleryPlaceholder. 실 시공 사진 수령 시
+ *   <GalleryPlaceholder /> 자리를 next/image <Image src={photo}/> 로 교체(figure/figcaption 재사용).
  */
 export function ConstructionGallery({ items }: Props): ReactElement {
   return (
@@ -24,8 +23,8 @@ export function ConstructionGallery({ items }: Props): ReactElement {
         {items.map((item) => (
           <li key={item.caption}>
             <figure>
-              <div className="bg-muted relative aspect-[4/3] w-full overflow-hidden rounded-xl">
-                <GalleryPlaceholder scene={item.scene} />
+              <div className="border-border relative aspect-[4/3] w-full overflow-hidden rounded-2xl border">
+                <GalleryPlaceholder />
               </div>
               <figcaption className="text-muted-foreground mt-2 text-xs leading-5">
                 {item.caption}

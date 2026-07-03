@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
-import { CheckCircle2, Truck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Truck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactElement } from 'react';
 import { confirmStorePaymentAction, registerStoreShipmentAction } from '@/app/(admin)/store/actions';
@@ -104,7 +104,8 @@ export function PaymentShipmentCard({
         ) : null}
 
         {error ? (
-          <div className="border-destructive/30 bg-destructive/10 rounded-md border px-3 py-2 text-sm">
+          <div className="border-destructive/30 flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm">
+            <AlertCircle className="text-destructive size-4 shrink-0" aria-hidden />
             <p className="text-destructive">{error}</p>
           </div>
         ) : null}

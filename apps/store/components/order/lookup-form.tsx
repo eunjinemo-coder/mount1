@@ -1,7 +1,7 @@
 'use client';
 
 import { formatCurrencyKRW, formatDateTimeKST } from '@mount/lib/format';
-import { ExternalLink, Loader2, Search } from 'lucide-react';
+import { AlertCircle, ExternalLink, Loader2, Search } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { Field, inputCls } from '@/components/form/field';
 import { StatusTimeline } from '@/components/order/status-timeline';
@@ -85,17 +85,18 @@ export function LookupForm(): ReactElement {
 
         {formError && (
           <p
-            className="text-destructive rounded-lg bg-destructive/10 px-4 py-3 text-sm"
+            className="text-destructive border-destructive/40 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm"
             role="alert"
           >
-            {formError}
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>{formError}</span>
           </p>
         )}
 
         <button
           type="submit"
           disabled={submitting}
-          className="bg-primary text-primary-foreground flex h-12 w-full items-center justify-center gap-2 rounded-md text-sm font-semibold disabled:opacity-50"
+          className="bg-primary text-primary-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold disabled:opacity-50"
         >
           {submitting ? (
             <>
@@ -112,7 +113,7 @@ export function LookupForm(): ReactElement {
       </form>
 
       {order && (
-        <section className="space-y-6 rounded-xl border border-input p-5">
+        <section className="space-y-6 rounded-2xl border border-border p-5">
           <div className="flex items-baseline justify-between">
             <div>
               <p className="text-muted-foreground text-xs">주문번호</p>
@@ -126,7 +127,7 @@ export function LookupForm(): ReactElement {
           <StatusTimeline status={order.status} />
 
           {order.shipment && (
-            <div className="rounded-lg border border-input p-4 text-sm">
+            <div className="rounded-xl border border-input p-4 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">택배사</span>
                 <span className="font-medium">{carrierLabel(order.shipment.carrier)}</span>
@@ -140,7 +141,7 @@ export function LookupForm(): ReactElement {
                   href={trackingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary mt-3 flex items-center justify-center gap-1.5 rounded-md border border-input py-2.5 text-sm font-semibold"
+                  className="text-primary mt-3 flex items-center justify-center gap-1.5 rounded-xl border border-input py-2.5 text-sm font-semibold"
                 >
                   배송 추적
                   <ExternalLink className="size-3.5" aria-hidden />

@@ -17,7 +17,7 @@ export function ProductFaq({ items }: Props): ReactElement {
       <ul className="mt-4 space-y-2">
         {items.map((item) => (
           <li key={item.q}>
-            <details className="group border-border/70 bg-card rounded-xl border">
+            <details className="group border-border bg-card rounded-2xl border">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
                 <span>{item.q}</span>
                 <ChevronDown
@@ -25,7 +25,7 @@ export function ProductFaq({ items }: Props): ReactElement {
                   aria-hidden
                 />
               </summary>
-              <p className="text-muted-foreground border-border/60 border-t px-4 py-3.5 text-sm leading-6">
+              <p className="text-muted-foreground border-border border-t px-4 py-3.5 text-sm leading-6">
                 {item.a}
               </p>
             </details>

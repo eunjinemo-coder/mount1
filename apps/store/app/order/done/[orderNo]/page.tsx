@@ -31,7 +31,7 @@ export default async function OrderDonePage({ params }: PageProps): Promise<Reac
     <main className="bg-background flex min-h-dvh flex-col">
       <div className="mx-auto w-full max-w-lg px-5 py-10">
         <div className="text-center">
-          <div className="bg-success/10 mx-auto flex size-16 items-center justify-center rounded-full">
+          <div className="border-border mx-auto flex size-16 items-center justify-center rounded-full border">
             <CheckCircle2 className="text-success size-9" aria-hidden />
           </div>
           <h1 className="mt-4 text-2xl font-bold tracking-ko-tight">주문이 접수됐어요</h1>
@@ -41,7 +41,7 @@ export default async function OrderDonePage({ params }: PageProps): Promise<Reac
         </div>
 
         {/* 주문번호 */}
-        <div className="mt-8 rounded-xl border border-input p-5 text-center">
+        <div className="mt-8 rounded-2xl border border-border p-5 text-center">
           <p className="text-muted-foreground text-xs">주문번호</p>
           <p className="tabular mt-1 text-2xl font-bold tracking-wide">
             {orderNo}
@@ -50,7 +50,7 @@ export default async function OrderDonePage({ params }: PageProps): Promise<Reac
         </div>
 
         {/* 입금 안내 */}
-        <div className="mt-4 rounded-xl border border-input p-5">
+        <div className="mt-4 rounded-2xl border border-border p-5">
           <h2 className="text-base font-bold">입금 안내</h2>
           <dl className="mt-3 space-y-2.5 text-sm">
             <div className="flex justify-between gap-3">
@@ -100,20 +100,20 @@ export default async function OrderDonePage({ params }: PageProps): Promise<Reac
         </div>
 
         {/* SMS 안내 (R4 준비 중) */}
-        <p className="text-muted-foreground mt-4 rounded-lg bg-muted/40 px-4 py-3 text-center text-xs leading-5">
+        <p className="border-border text-muted-foreground mt-4 rounded-xl border px-4 py-3 text-center text-xs leading-5">
           주문번호·계좌·금액을 SMS로도 보내드릴 예정입니다. (SMS 발송 준비 중)
         </p>
 
         <div className="mt-8 flex flex-col gap-2">
           <Link
             href="/order/lookup"
-            className="border-input hover:bg-accent flex h-12 items-center justify-center rounded-md border text-sm font-semibold transition-colors"
+            className="border-input hover:bg-accent flex h-12 items-center justify-center rounded-xl border text-sm font-semibold transition-colors"
           >
             주문 조회
           </Link>
           <Link
             href="/"
-            className="text-muted-foreground flex h-12 items-center justify-center rounded-md text-sm transition-colors"
+            className="text-muted-foreground flex h-12 items-center justify-center rounded-xl text-sm transition-colors"
           >
             스토어 홈으로
           </Link>

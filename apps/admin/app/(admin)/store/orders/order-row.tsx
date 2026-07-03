@@ -9,6 +9,7 @@
  * 유지된다 — 별도 스크롤 복원 로직 불필요(팀리드 지시 §3 "스크롤 위치 보존").
  */
 import { Badge } from '@mount/ui';
+import { CheckCircle2, Info } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
@@ -61,10 +62,10 @@ export function OrderRow({ order }: { order: OrderListRow }): ReactElement {
     <>
       <tr
         className={`border-b transition-colors duration-500 last:border-0 ${
-          highlighted ? 'bg-primary/10' : 'hover:bg-muted/40'
+          highlighted ? 'border-l-primary border-l-2' : 'hover:bg-muted/40'
         }`}
       >
-        <td className="px-2 py-3 font-mono text-xs font-medium">{order.order_no}</td>
+        <td className="text-muted-foreground px-2 py-3 font-mono text-xs">{order.order_no}</td>
         <td className="text-muted-foreground px-2 py-3 tabular-nums">{formatDateTime(order.created_at)}</td>
         <td className="px-2 py-3">
           {order.buyer_name}
@@ -78,7 +79,7 @@ export function OrderRow({ order }: { order: OrderListRow }): ReactElement {
             ) : (
               <span className="text-amber-600">입금자명 미기재</span>
             )}
-            <span className="font-medium tabular-nums whitespace-nowrap">{formatWon(order.total_amount)}</span>
+            <span className="text-base font-bold tabular-nums whitespace-nowrap">{formatWon(order.total_amount)}</span>
           </div>
         </td>
         <td className="px-2 py-3">
@@ -104,11 +105,16 @@ export function OrderRow({ order }: { order: OrderListRow }): ReactElement {
               aria-live="polite"
               className={
                 banner.tone === 'success'
-                  ? 'border-primary/30 bg-primary/5 text-primary rounded-md border px-3 py-1.5 text-xs font-medium'
-                  : 'border-border bg-muted/60 text-muted-foreground rounded-md border px-3 py-1.5 text-xs font-medium'
+                  ? 'border-primary/30 text-primary flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium'
+                  : 'border-border text-muted-foreground flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium'
               }
               role="status"
             >
+              {banner.tone === 'success' ? (
+                <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
+              ) : (
+                <Info className="size-3.5 shrink-0" aria-hidden />
+              )}
               {banner.message}
             </div>
           </td>

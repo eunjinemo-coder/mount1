@@ -18,10 +18,10 @@ const STATS: TrustStat[] = [
 export function TrustStrip(): ReactElement {
   return (
     <section className="px-5">
-      <div className="bg-muted/60 grid grid-cols-3 gap-2 rounded-2xl px-2 py-5">
+      <div className="border-border grid grid-cols-3 gap-2 rounded-2xl border px-2 py-5">
         {STATS.map((stat) => (
           <div key={stat.label} className="text-center">
-            <p className="tabular text-primary text-xl font-bold">{stat.value}</p>
+            <p className="tabular text-foreground text-xl font-bold">{stat.value}</p>
             <p className="text-muted-foreground mt-1 text-xs leading-4">{stat.label}</p>
           </div>
         ))}

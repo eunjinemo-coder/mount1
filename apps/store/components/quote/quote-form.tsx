@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState, type ReactElement } from 'react';
 import { Field, inputCls } from '@/components/form/field';
@@ -108,8 +108,8 @@ export function QuoteForm(): ReactElement {
 
   if (done) {
     return (
-      <div className="rounded-xl border border-input p-8 text-center">
-        <div className="bg-success/10 mx-auto flex size-14 items-center justify-center rounded-full">
+      <div className="rounded-2xl border border-border p-8 text-center">
+        <div className="border-border mx-auto flex size-14 items-center justify-center rounded-full border">
           <CheckCircle2 className="text-success size-8" aria-hidden />
         </div>
         <h2 className="mt-4 text-lg font-bold">견적 문의가 접수됐어요</h2>
@@ -118,7 +118,7 @@ export function QuoteForm(): ReactElement {
         </p>
         <Link
           href="/"
-          className="border-input hover:bg-accent mt-6 flex h-12 items-center justify-center rounded-md border text-sm font-semibold transition-colors"
+          className="border-input hover:bg-accent mt-6 flex h-12 items-center justify-center rounded-xl border text-sm font-semibold transition-colors"
         >
           스토어로 돌아가기
         </Link>
@@ -217,15 +217,19 @@ export function QuoteForm(): ReactElement {
       </Field>
 
       {formError && (
-        <p className="text-destructive rounded-lg bg-destructive/10 px-4 py-3 text-sm" role="alert">
-          {formError}
+        <p
+          className="text-destructive border-destructive/40 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm"
+          role="alert"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>{formError}</span>
         </p>
       )}
 
       <button
         type="submit"
         disabled={submitting}
-        className="bg-primary text-primary-foreground flex h-12 w-full items-center justify-center gap-2 rounded-md text-sm font-semibold disabled:opacity-50"
+        className="bg-primary text-primary-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold disabled:opacity-50"
       >
         {submitting ? (
           <>

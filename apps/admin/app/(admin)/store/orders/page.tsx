@@ -83,7 +83,7 @@ export default async function StoreOrdersPage(props: {
           </div>
           {showFailedOnly ? (
             <Link
-              className="bg-destructive/10 text-destructive flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium hover:underline"
+              className="border-destructive/30 text-destructive flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium hover:underline"
               href="/store/orders"
             >
               <X className="size-3" aria-hidden />
@@ -91,7 +91,7 @@ export default async function StoreOrdersPage(props: {
             </Link>
           ) : failedCount > 0 ? (
             <Link
-              className="bg-destructive/10 text-destructive flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium hover:underline"
+              className="border-destructive/30 text-destructive flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium hover:underline"
               href="/store/orders?failed=1"
             >
               <AlertCircle className="size-3" aria-hidden />

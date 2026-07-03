@@ -37,12 +37,16 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''} https://*.posthog.com https://browser.sentry-cdn.com`,
+              // 다음(카카오) 우편번호: 스크립트 t1.daumcdn.net · 임베드 iframe/에셋 *.daum.net·*.daumcdn.net
+              // 트레이드오프: 벤더가 SRI 해시·고정 서브도메인을 보장하지 않아 와일드카드(*.daumcdn.net) 허용.
+              // 무료·키 불요 공식 서비스로 오타 없는 주소 입력 이득이 크고, 스크립트는 클릭 시에만 온디맨드 로드.
+              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''} https://*.posthog.com https://browser.sentry-cdn.com https://*.daumcdn.net`,
               "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-              "img-src 'self' data: blob: https://*.posthog.com",
+              "img-src 'self' data: blob: https://*.posthog.com https://*.daumcdn.net https://*.daum.net",
               "font-src 'self' data: https://cdn.jsdelivr.net",
-              `connect-src 'self' https://*.supabase.co${SUPABASE_HOST ? ` ${SUPABASE_HOST}` : ''} https://*.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io`,
+              `connect-src 'self' https://*.supabase.co${SUPABASE_HOST ? ` ${SUPABASE_HOST}` : ''} https://*.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://*.daum.net https://*.daumcdn.net`,
               "media-src 'self' blob:",
+              "frame-src 'self' https://*.daum.net https://*.daumcdn.net",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

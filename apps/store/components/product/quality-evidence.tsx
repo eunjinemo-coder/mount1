@@ -34,10 +34,10 @@ export function QualityEvidence({ items }: Props): ReactElement {
           return (
             <li
               key={item.title}
-              className="border-border/70 bg-card rounded-xl border p-4"
+              className="border-border bg-card rounded-2xl border p-4"
             >
               <span
-                className="text-primary bg-brand-50 flex size-10 items-center justify-center rounded-lg"
+                className="text-foreground border-border flex size-10 items-center justify-center rounded-xl border"
                 aria-hidden
               >
                 <Icon className="size-5" />
