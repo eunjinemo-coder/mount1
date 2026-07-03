@@ -1,15 +1,19 @@
 import { getSession } from '@mount/lib';
 import {
   AlertCircle,
+  ClipboardList,
   Coffee,
   Cog,
   CreditCard,
   Home,
   MapPin,
   Package,
+  ShoppingCart,
+  Store,
   Users,
   Wrench,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactElement, ReactNode } from 'react';
 import { UserMenu } from './user-menu';
@@ -44,6 +48,9 @@ export interface AdminShellProps {
     | 'live'
     | 'payouts'
     | 'coupang'
+    | 'storeProducts'
+    | 'storeOrders'
+    | 'storeQuotes'
     | 'settings';
   children: ReactNode;
 }
@@ -56,8 +63,16 @@ const NAV = [
   { id: 'live', label: '실시간', href: '/live', icon: MapPin },
   { id: 'payouts', label: '정산', href: '/payouts', icon: CreditCard },
   { id: 'coupang', label: '쿠팡', href: '/coupang', icon: Coffee },
-  { id: 'settings', label: '설정', href: '/settings', icon: Cog },
 ] as const;
+
+// P0 스토어(무타공 브라켓) 운영 메뉴 — 02_PRD_P0_STORE.md §1 어드민 표.
+const STORE_NAV = [
+  { id: 'storeProducts', label: '상품', href: '/store/products', icon: Store },
+  { id: 'storeOrders', label: '스토어 주문', href: '/store/orders', icon: ShoppingCart },
+  { id: 'storeQuotes', label: '견적요청', href: '/store/quotes', icon: ClipboardList },
+] as const;
+
+const SETTINGS_NAV = { id: 'settings', label: '설정', href: '/settings', icon: Cog } as const;
 
 export async function AdminShell(props: AdminShellProps): Promise<ReactElement> {
   // 세션 자동 fetch — props 우선, 없으면 session 에서 보충
@@ -75,31 +90,18 @@ export async function AdminShell(props: AdminShellProps): Promise<ReactElement> 
           <span className="font-bold tracking-tight">마운트파트너스</span>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {NAV.map((item) => {
-            const Icon = item.icon;
-            const isActive = props.activeNav === item.id;
-            return (
-              <Link
-                aria-current={isActive ? 'page' : undefined}
-                className={`relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${
-                  isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                }`}
-                href={item.href}
-                key={item.id}
-              >
-                {isActive ? (
-                  <span
-                    aria-hidden
-                    className="bg-primary absolute inset-y-1 left-0 w-1 rounded-r"
-                  />
-                ) : null}
-                <Icon className="size-4 shrink-0" aria-hidden />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+          {NAV.map((item) => (
+            <NavLink isActive={props.activeNav === item.id} item={item} key={item.id} />
+          ))}
+          <p className="text-muted-foreground/70 px-3 pt-4 pb-1 text-[11px] font-semibold tracking-wider uppercase">
+            스토어
+          </p>
+          {STORE_NAV.map((item) => (
+            <NavLink isActive={props.activeNav === item.id} item={item} key={item.id} />
+          ))}
+          <div className="pt-1">
+            <NavLink isActive={props.activeNav === SETTINGS_NAV.id} item={SETTINGS_NAV} />
+          </div>
         </nav>
         <div className="border-t px-4 py-3">
           <p className="text-muted-foreground text-xs">마운트파트너스 v0.1.0</p>
@@ -134,5 +136,33 @@ export async function AdminShell(props: AdminShellProps): Promise<ReactElement> 
         <main className="flex-1">{props.children}</main>
       </div>
     </div>
+  );
+}
+
+interface NavItemData {
+  id: string;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+function NavLink({ item, isActive }: { item: NavItemData; isActive: boolean }): ReactElement {
+  const Icon = item.icon;
+  return (
+    <Link
+      aria-current={isActive ? 'page' : undefined}
+      className={`relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${
+        isActive
+          ? 'bg-primary/10 text-primary'
+          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+      }`}
+      href={item.href}
+    >
+      {isActive ? (
+        <span aria-hidden className="bg-primary absolute inset-y-1 left-0 w-1 rounded-r" />
+      ) : null}
+      <Icon aria-hidden className="size-4 shrink-0" />
+      <span>{item.label}</span>
+    </Link>
   );
 }
