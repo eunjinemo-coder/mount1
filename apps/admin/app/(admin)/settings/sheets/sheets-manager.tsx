@@ -1,0 +1,198 @@
+'use client';
+
+/**
+ * 구글시트 연동 관리 UI (클라이언트) — 연결 추가/토글/재시도.
+ * 서버가 넘긴 초기 데이터(links)를 렌더하고, server action 호출 후 router.refresh.
+ * 어드민 정숙 규율: 장식 채움 없이 상태·행동만.
+ */
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mount/ui';
+import { RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState, useTransition, type ReactElement } from 'react';
+import {
+  connectSheetAction,
+  retryFailedSyncAction,
+  toggleSheetActiveAction,
+} from './actions';
+
+export interface SheetLinkView {
+  id: string;
+  spreadsheetId: string;
+  sheetName: string;
+  entity: string;
+  active: boolean;
+  columnCount: number;
+  pending: number;
+  failed: number;
+}
+
+const COLUMN_MAP_PLACEHOLDER =
+  '{"B":"scheduled_date","C":"status","D":"phone_tail4","E":"special_notes"}';
+
+export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactElement {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    spreadsheetUrl: '',
+    sheetName: '',
+    columnMapJson: '',
+    syncIdColumn: 'A',
+  });
+
+  function refresh(): void {
+    router.refresh();
+  }
+
+  function submitConnect(): void {
+    setError(null);
+    startTransition(async () => {
+      const res = await connectSheetAction({
+        spreadsheetUrl: form.spreadsheetUrl,
+        sheetName: form.sheetName,
+        columnMapJson: form.columnMapJson,
+        syncIdColumn: form.syncIdColumn,
+      });
+      if (!res.ok) setError(res.error ?? '연결 실패');
+      else {
+        setForm({ spreadsheetUrl: '', sheetName: '', columnMapJson: '', syncIdColumn: 'A' });
+        refresh();
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 연결된 시트 목록 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">연결된 시트</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {links.length === 0 ? (
+            <p className="text-muted-foreground text-sm">아직 연결된 시트가 없습니다. 아래에서 추가하세요.</p>
+          ) : (
+            links.map((link) => (
+              <div
+                key={link.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+              >
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 font-medium">
+                    {link.sheetName}
+                    {link.active ? (
+                      <Badge>활성</Badge>
+                    ) : (
+                      <Badge variant="secondary">중지</Badge>
+                    )}
+                    {link.failed > 0 ? (
+                      <Badge variant="destructive">시트 동기화 {link.failed}건 실패</Badge>
+                    ) : null}
+                  </p>
+                  <p className="text-muted-foreground mt-0.5 truncate font-mono text-xs">
+                    {link.spreadsheetId.slice(0, 18)}… · 매핑 {link.columnCount}열 · 대기 {link.pending}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {link.failed > 0 ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() =>
+                        startTransition(async () => {
+                          await retryFailedSyncAction(link.id);
+                          refresh();
+                        })
+                      }
+                    >
+                      <RefreshCw className="mr-1 size-3.5" aria-hidden />
+                      재시도
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant={link.active ? 'outline' : 'default'}
+                    disabled={pending}
+                    onClick={() =>
+                      startTransition(async () => {
+                        await toggleSheetActiveAction(link.id, !link.active);
+                        refresh();
+                      })
+                    }
+                  >
+                    {link.active ? '동기화 중지' : '동기화 켜기'}
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 새 시트 연결 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">새 시트 연결</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-1.5">
+            <label className="text-muted-foreground text-xs" htmlFor="ss-url">
+              구글시트 URL
+            </label>
+            <Input
+              id="ss-url"
+              placeholder="https://docs.google.com/spreadsheets/d/…/edit"
+              value={form.spreadsheetUrl}
+              onChange={(e) => setForm({ ...form, spreadsheetUrl: e.target.value })}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <label className="text-muted-foreground text-xs" htmlFor="ss-tab">
+                탭 이름
+              </label>
+              <Input
+                id="ss-tab"
+                placeholder="시공"
+                value={form.sheetName}
+                onChange={(e) => setForm({ ...form, sheetName: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-muted-foreground text-xs" htmlFor="ss-sync">
+                _sync_id 숨김열
+              </label>
+              <Input
+                id="ss-sync"
+                placeholder="A"
+                value={form.syncIdColumn}
+                onChange={(e) => setForm({ ...form, syncIdColumn: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <label className="text-muted-foreground text-xs" htmlFor="ss-map">
+              열 매핑 (JSON · 시트 열문자 → 앱 필드)
+            </label>
+            <textarea
+              id="ss-map"
+              className="border-input bg-background min-h-20 rounded-md border px-3 py-2 font-mono text-xs"
+              placeholder={COLUMN_MAP_PLACEHOLDER}
+              value={form.columnMapJson}
+              onChange={(e) => setForm({ ...form, columnMapJson: e.target.value })}
+            />
+            <p className="text-muted-foreground text-xs">
+              지원 필드: status · scheduled_date · special_notes(쓰기) / phone_tail4 · region_sido ·
+              region_sigungu · tv_brand · tv_model · tv_size · technician_name(읽기)
+            </p>
+          </div>
+          {error ? <p className="text-destructive text-sm">{error}</p> : null}
+          <Button onClick={submitConnect} disabled={pending}>
+            {pending ? '저장 중…' : '시트 연결'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

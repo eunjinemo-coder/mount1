@@ -13,7 +13,8 @@
     "./error-reporting": "./src/error-reporting/index.ts",
     "./analytics": "./src/analytics/index.ts",
     "./navigation": "./src/navigation.ts",
-    "./notify": "./src/notify/index.ts"
+    "./notify": "./src/notify/index.ts",
+    "./sheets": "./src/sheets/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

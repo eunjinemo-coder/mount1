@@ -3,6 +3,7 @@
 import { getServerClient } from '@mount/db';
 import { assertAdminRole, isValidUuid } from '@mount/lib';
 import { revalidatePath } from 'next/cache';
+import { enqueueSheetSync } from '@/lib/sheets/enqueue';
 
 /**
  * Order status state machine — 정상 전이만 허용 (super_admin 은 force override 가능).
@@ -106,6 +107,9 @@ export async function updateOrderStatusAction(
     console.error('[updateOrderStatus] audit_events insert failed:', auditError);
   }
 
+  // 앱→시트 동기화 큐잉 (best-effort · 트랜잭션 밖 · 실패해도 주문변경 유지)
+  await enqueueSheetSync(id);
+
   revalidatePath(`/orders/${id}`);
   revalidatePath('/orders');
   revalidatePath('/today');
@@ -144,6 +148,9 @@ export async function updateOrderScheduleAction(
   if (auditError) {
     console.error('[updateOrderSchedule] audit_events insert failed:', auditError);
   }
+
+  // 앱→시트 동기화 큐잉 (best-effort)
+  await enqueueSheetSync(id);
 
   revalidatePath(`/orders/${id}`);
   revalidatePath('/orders');
