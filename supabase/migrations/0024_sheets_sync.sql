@@ -48,7 +48,7 @@ create table sheet_links (
   entity text not null default 'installation'    -- 도메인 라벨(앱 어댑터가 orders 로 해석)
     check (entity in ('installation')),          -- db#5: 현재 지원 엔티티 화이트리스트(오타/미지원 차단)
   column_map jsonb not null,                     -- {"B":"scheduled_date","C":"status",...} 시트 열↔앱 필드
-  sync_id_column text not null default 'A',      -- _sync_id 숨김열(시트 열문자). 행 식별 기준.
+  sync_id_column text not null default 'AI',     -- _sync_id 숨김열(시트 열문자). 행 식별 기준. 데이터열('A'=시공일자 등) 회피 위해 기본 'AI'(빈 열).
   header_row int not null default 1 check (header_row >= 1),
   active boolean not null default true,
   last_polled_at timestamptz,                    -- 폴링 백업(5분) 마지막 스냅샷 시각

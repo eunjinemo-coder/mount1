@@ -15,7 +15,8 @@ import {
   INSTALLATION_FIELD_KEYS,
 } from '@/lib/sheets/mapping';
 
-const SHEETS_ROLES = ['super_admin', 'dispatch_admin'] as const;
+// installation_jobs RLS(0025: super_admin/ops_admin 쓰기)와 정합 — 불일치 시 서버액션 통과 후 RLS에서 조용히 실패.
+const SHEETS_ROLES = ['super_admin', 'ops_admin'] as const;
 
 export interface SheetsActionResult {
   ok: boolean;
