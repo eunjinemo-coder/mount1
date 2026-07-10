@@ -16,6 +16,7 @@ import { createSign } from 'node:crypto';
 import { columnLetterToIndex } from '@mount/lib/sheets';
 import type { SheetsApi, SheetLink } from '@mount/lib/sheets';
 import type { GoogleServiceAccount } from './config';
+import { computeInsertOffset } from './visit-time';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -92,6 +93,27 @@ async function findRowNumber(
   return null;
 }
 
+/** sheetName → sheetId(gid) 해석 + 캐시(insertDimension 은 gid 필요). */
+const sheetIdCache = new Map<string, number>();
+async function getSheetId(token: string, spreadsheetId: string, sheetName: string): Promise<number> {
+  const key = `${spreadsheetId}::${sheetName}`;
+  const cached = sheetIdCache.get(key);
+  if (cached !== undefined) return cached;
+  const res = await fetch(
+    `${SHEETS_BASE}/${spreadsheetId}?fields=${encodeURIComponent('sheets.properties(sheetId,title)')}`,
+    { headers: { authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`sheets_meta_failed:${res.status}`);
+  const json = (await res.json()) as {
+    sheets?: { properties?: { sheetId?: number; title?: string } }[];
+  };
+  const found = (json.sheets ?? []).find((s) => s.properties?.title === sheetName);
+  const gid = found?.properties?.sheetId;
+  if (gid === undefined) throw new Error('sheets_gid_not_found');
+  sheetIdCache.set(key, gid);
+  return gid;
+}
+
 export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
   return {
     async upsertRow({ link, syncRowId, cells }) {
@@ -117,7 +139,12 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
         return { upserted: true };
       }
 
-      // append — 최대 열 인덱스까지 배열 구성해 한 행 추가
+      // 신규행 — 은진님 시트는 하나의 깔끔한 표(A=시공일자 asc, D=방문시간 asc).
+      // 맨 아래 append 대신 정렬 위치에 행 삽입(은진님 요구). 오프셋은 computeInsertOffset
+      // (순수·visit-time.test 로 검증). 날짜 파싱 실패 시 append 폴백.
+      const DATE_COL = 'A'; // 시공일자
+      const TIME_COL = 'D'; // 방문시간
+
       let maxIdx = 0;
       for (const col of Object.keys(cells)) maxIdx = Math.max(maxIdx, columnLetterToIndex(col));
       const rowArray: string[] = new Array(maxIdx + 1).fill('');
@@ -125,16 +152,68 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
         const idx = columnLetterToIndex(col);
         if (idx >= 0) rowArray[idx] = value;
       }
-      const appendRange = encodeURIComponent(`${link.sheetName}!A${link.headerRow + 1}`);
-      const res = await fetch(
-        `${SHEETS_BASE}/${link.spreadsheetId}/values/${appendRange}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+
+      // 기존 데이터행의 A·D 를 읽어 삽입 오프셋 계산
+      const adRange = encodeURIComponent(`${link.sheetName}!A${link.headerRow + 1}:D`);
+      const adRes = await fetch(`${SHEETS_BASE}/${link.spreadsheetId}/values/${adRange}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!adRes.ok) throw new Error(`sheets_read_failed:${adRes.status}`);
+      const adJson = (await adRes.json()) as { values?: string[][] };
+      const existingAD = (adJson.values ?? []).map((r) => ({ date: r[0] ?? '', visit: r[3] ?? '' }));
+      const offset = computeInsertOffset(existingAD, {
+        date: cells[DATE_COL] ?? '',
+        visit: cells[TIME_COL] ?? '',
+      });
+
+      if (offset === null) {
+        // 날짜 파싱 실패 → 정렬 불가, 맨 아래 append 폴백
+        const appendRange = encodeURIComponent(`${link.sheetName}!A${link.headerRow + 1}`);
+        const res = await fetch(
+          `${SHEETS_BASE}/${link.spreadsheetId}/values/${appendRange}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+          {
+            method: 'POST',
+            headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+            body: JSON.stringify({ values: [rowArray] }),
+          },
+        );
+        if (!res.ok) throw new Error(`sheets_append_failed:${res.status}`);
+        return { upserted: true };
+      }
+
+      // 정렬 위치에 빈 행 삽입(insertDimension · 0-base grid index) 후 값 기록
+      const sheetId = await getSheetId(token, link.spreadsheetId, link.sheetName);
+      const insertIndex = link.headerRow + offset;
+      const insRes = await fetch(`${SHEETS_BASE}/${link.spreadsheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          requests: [
+            {
+              insertDimension: {
+                range: {
+                  sheetId,
+                  dimension: 'ROWS',
+                  startIndex: insertIndex,
+                  endIndex: insertIndex + 1,
+                },
+                inheritFromBefore: false,
+              },
+            },
+          ],
+        }),
+      });
+      if (!insRes.ok) throw new Error(`sheets_insert_failed:${insRes.status}`);
+      const writeRange = encodeURIComponent(`${link.sheetName}!A${insertIndex + 1}`);
+      const wRes = await fetch(
+        `${SHEETS_BASE}/${link.spreadsheetId}/values/${writeRange}?valueInputOption=RAW`,
         {
-          method: 'POST',
+          method: 'PUT',
           headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
           body: JSON.stringify({ values: [rowArray] }),
         },
       );
-      if (!res.ok) throw new Error(`sheets_append_failed:${res.status}`);
+      if (!wRes.ok) throw new Error(`sheets_write_failed:${wRes.status}`);
       return { upserted: true };
     },
   };
