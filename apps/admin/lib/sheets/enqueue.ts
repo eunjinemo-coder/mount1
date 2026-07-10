@@ -13,10 +13,12 @@ import 'server-only';
  *    (sync_outbox INSERT 는 admin RLS 상 워커/service_role 경로). server action 에서는
  *    getAdminClient() 로 감싸 호출할 것.
  */
+import { after } from 'next/server';
 import { getAdminClient } from '@mount/db/admin';
 import { captureMessage, log } from '@mount/lib';
-import { contentHash, mappedFieldsForHash } from '@mount/lib/sheets';
+import { contentHash, mappedFieldsForHash, processOutboxBatch } from '@mount/lib/sheets';
 import { createInstallationAdapter } from './entity-adapter';
+import { makeOutboxDeps } from './deps';
 import { createSheetSyncStore } from './store';
 
 export async function enqueueSheetSync(entityId: string, entity = 'installation'): Promise<void> {
@@ -37,6 +39,19 @@ export async function enqueueSheetSync(entityId: string, entity = 'installation'
       await store.enqueueOutbox(link.id, entityId, hash);
     }
     log.info('sheet sync enqueued', { entityId, entity, links: links.length });
+
+    // 즉시 flush — 크론(Hobby: 하루 1회)을 기다리지 않고 앱→시트를 바로 반영.
+    // after(): 응답 후 실행(non-blocking). 서비스계정 미설정/시트오류 시 throw→catch(크론·다음 수정 시 재시도).
+    after(async () => {
+      try {
+        await processOutboxBatch(makeOutboxDeps(client));
+      } catch (e) {
+        log.warn('즉시 flush 실패(다음 크론/수정 시 재시도)', {
+          entityId,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    });
   } catch (e) {
     log.warn('enqueueSheetSync best-effort 실패', {
       entityId,
