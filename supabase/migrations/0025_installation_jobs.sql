@@ -60,6 +60,22 @@ create table installation_jobs (
   status text not null default 'scheduled'
     check (status in ('scheduled','in_progress','completed','cancelled')),
 
+  -- 자유텍스트 길이 상한 — 시트 셀 오버사이즈 방어(마지막 방어선).
+  --   동기화 워커는 service_role(RLS BYPASS)이라 RLS 는 못 막지만 CHECK 는 우회하지 못한다.
+  --   상한은 넉넉히 잡아 정상 데이터는 절대 걸리지 않게 한다. 초과 셀이 들어오면 insert/update 가
+  --   에러 → 엔진이 sync_log error + ⚠ writeback 으로 표면화(비파괴 · 은진님 행 원본 보존).
+  --   NULL 은 char_length 가 NULL → CHECK 통과(빈 칸 허용).
+  constraint installation_jobs_visit_time_len      check (char_length(visit_time) <= 50),
+  constraint installation_jobs_technician_name_len  check (char_length(technician_name) <= 100),
+  constraint installation_jobs_customer_phone_len   check (char_length(customer_phone) <= 50),
+  constraint installation_jobs_customer_phone2_len  check (char_length(customer_phone2) <= 50),
+  constraint installation_jobs_address_len          check (char_length(address) <= 300),
+  constraint installation_jobs_address_detail_len   check (char_length(address_detail) <= 300),
+  constraint installation_jobs_customer_name_len    check (char_length(customer_name) <= 100),
+  constraint installation_jobs_install_type_len     check (char_length(install_type) <= 100),
+  constraint installation_jobs_install_content_len  check (char_length(install_content) <= 2000),
+  constraint installation_jobs_special_notes_len    check (char_length(special_notes) <= 2000),
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -78,6 +94,14 @@ comment on column installation_jobs.status is
 -- 기사 오늘일정(시공일자순) · 상태 필터
 create index idx_installation_jobs_schedule on installation_jobs(scheduled_install_date);
 create index idx_installation_jobs_status   on installation_jobs(status);
+
+-- 이름→기사 연결(technician_id FK) 조회/조인 가속. NULL(미연결)은 대다수라 partial 로 인덱스 슬림화.
+create index idx_installation_jobs_technician on installation_jobs(technician_id)
+  where technician_id is not null;
+
+-- 기사 오늘일정 화면: 활성(scheduled/in_progress) 건만 시공일자순 — partial 로 완료/취소 제외(저비용).
+create index idx_installation_jobs_active_schedule on installation_jobs(scheduled_install_date)
+  where status in ('scheduled','in_progress');
 
 -- ============================================================================
 -- 2. RLS — admin(super_admin/ops_admin) 관리 + auditor 읽기. 워커/웹훅은 service_role(우회).

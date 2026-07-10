@@ -9,7 +9,11 @@
 import { getServerClient } from '@mount/db';
 import { assertAdminRole } from '@mount/lib';
 import { revalidatePath } from 'next/cache';
-import { INSTALLATION_FIELD_KEYS } from '@/lib/sheets/mapping';
+import {
+  checkSyncIdOverlap,
+  DEFAULT_INSTALLATION_SYNC_ID_COLUMN,
+  INSTALLATION_FIELD_KEYS,
+} from '@/lib/sheets/mapping';
 
 const SHEETS_ROLES = ['super_admin', 'dispatch_admin'] as const;
 
@@ -86,8 +90,12 @@ export async function connectSheetAction(input: ConnectSheetInput): Promise<Shee
   const { map, error } = parseColumnMap(input.columnMapJson);
   if (error || !map) return { ok: false, error };
 
-  const syncIdColumn = (input.syncIdColumn?.trim() || 'A').toUpperCase();
+  const syncIdColumn = (
+    input.syncIdColumn?.trim() || DEFAULT_INSTALLATION_SYNC_ID_COLUMN
+  ).toUpperCase();
   if (!/^[A-Za-z]{1,3}$/.test(syncIdColumn)) return { ok: false, error: '_sync_id 열문자 오류' };
+  const overlapError = checkSyncIdOverlap(syncIdColumn, map);
+  if (overlapError) return { ok: false, error: overlapError };
   const headerRow = input.headerRow && input.headerRow >= 1 ? Math.floor(input.headerRow) : 1;
 
   const client = await getServerClient();

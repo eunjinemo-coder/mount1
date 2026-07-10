@@ -10,9 +10,12 @@
  *  3. 아래 CONFIG 3개 값을 앱 관리자(설정 › 구글시트 연동)에서 받아 채우기
  *       · WEBHOOK_URL   : https://admin.mountpartners.cloud/api/sheets-webhook
  *       · WEBHOOK_SECRET: 앱에서 발급한 공유 시크릿(SHEETS_WEBHOOK_SECRET 와 동일해야 함)
- *       · SYNC_ID_COL   : _sync_id 를 저장할 숨김열 문자(기본 'A')
+ *       · SYNC_ID_COL   : _sync_id 를 저장할 숨김열 문자(기본 'AI')
  *  4. 저장(디스크 아이콘) 후 상단에서 함수 [installTrigger] 선택 → [실행]
  *     → 최초 실행 시 권한 승인 팝업 → [허용]. (설치형 onEdit 트리거 1개 생성)
+ *
+ *  ※ AI 열은 동기화용 숨김 UUID 열입니다 — 이 열은 건드리지 말고, 원하면 숨기세요.
+ *    은진님 시트 실데이터는 A~AH 를 쓰므로, 그 너머 빈 열(AI)에 기록해 데이터 칸과 겹치지 않습니다.
  *  5. (권장) 동기화 열(전화 뒷자리·날짜 등)은 서식을 "일반" 또는 "서식 없는 텍스트"로.
  *     앱은 RAW 로 값을 쓰므로 시트가 "0512"→512(선행0 소실)나 날짜 자동변환을 하지 않게 하면
  *     되돌이(에코) 정합이 안정적입니다.
@@ -30,7 +33,7 @@
 var CONFIG = {
   WEBHOOK_URL: 'https://admin.mountpartners.cloud/api/sheets-webhook',
   WEBHOOK_SECRET: 'PASTE_SHEETS_WEBHOOK_SECRET_HERE',
-  SYNC_ID_COL: 'A',        // _sync_id 숨김열
+  SYNC_ID_COL: 'AI',       // _sync_id 숨김열 (은진님 데이터 A~AH 너머 빈 열 — 건드리지 말 것)
   STATUS_COL: '',          // 상태표기 열(선택 · 비우면 표기 안 함)
   HEADER_ROWS: 1,          // 헤더 행 수(데이터는 그 다음 행부터)
 };

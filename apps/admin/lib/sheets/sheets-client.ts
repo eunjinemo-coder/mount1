@@ -154,6 +154,8 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
       }
 
       // 기존 데이터행의 A·D 를 읽어 삽입 오프셋 계산
+      // NOTE: read-then-act 경합 — 읽기와 insertDimension 사이에 다른 편집이 끼면 오프셋이 어긋날 수 있다.
+      //       은진님 단일 운영자 워크플로에선 동시편집이 없어 수용(별도 락 미도입).
       const adRange = encodeURIComponent(`${link.sheetName}!A${link.headerRow + 1}:D`);
       const adRes = await fetch(`${SHEETS_BASE}/${link.spreadsheetId}/values/${adRange}`, {
         headers: { authorization: `Bearer ${token}` },

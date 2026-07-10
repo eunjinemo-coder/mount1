@@ -72,7 +72,8 @@ const DATE_FIELDS: ReadonlySet<InstallationFieldKey> = new Set([
 
 /**
  * 은진님 양식 A~M 기본 열매핑(설정 UI 프리셋). 은진님은 이 매핑을 확인만 하면 된다.
- * N/O 는 비움/스페이서, _sync_id 숨김열은 P(아래) 권장 → A~M 데이터와 충돌하지 않음.
+ * 은진님 시트는 실제로 A~AH 를 사용한다(O 는 그 범위 내 빈 스페이서). _sync_id 숨김열은
+ * 데이터 끝(AH) 너머의 빈 열 AI(아래) 에 기록 → A~AH 데이터열과 충돌하지 않음.
  */
 export const DEFAULT_INSTALLATION_COLUMN_MAP: ColumnMap = {
   A: 'scheduled_install_date',
@@ -90,8 +91,28 @@ export const DEFAULT_INSTALLATION_COLUMN_MAP: ColumnMap = {
   M: 'special_notes',
 };
 
-/** _sync_id 숨김열 권장 위치(A~M 데이터열과 O 스페이서를 피함). */
-export const DEFAULT_INSTALLATION_SYNC_ID_COLUMN = 'P';
+/**
+ * _sync_id 숨김열 기본 위치 — 이 모듈이 유일한 source of truth.
+ * 은진님 시트 A~AH 사용 → AI(그 너머 빈 열)에 기록, 데이터열 충돌 회피.
+ * store.ts / actions.ts / sheets-manager.tsx / AppsScript.gs 모두 이 값을 따른다.
+ */
+export const DEFAULT_INSTALLATION_SYNC_ID_COLUMN = 'AI';
+
+/**
+ * _sync_id 숨김열이 데이터 열(column_map 의 키)과 겹치는 오설정을 차단(서버 경계 가드).
+ * 겹치면 동기화가 은진님 실데이터 칸에 UUID 를 덮어써 데이터를 파괴하므로 연결 저장 전에 거부한다.
+ * 입력은 정규화된 대문자 열문자와 대문자키 column_map. 겹치면 한글 에러문구, 아니면 null.
+ * (순수 함수 — actions.ts 는 'use server' 라 동기 export 불가 → 여기(테스트 대상 모듈)에 둔다.)
+ */
+export function checkSyncIdOverlap(
+  syncIdColumn: string,
+  map: Record<string, string>,
+): string | null {
+  if (Object.prototype.hasOwnProperty.call(map, syncIdColumn)) {
+    return `동기화 ID 열이 데이터 열과 겹칩니다 — 비어있는 열(예: ${DEFAULT_INSTALLATION_SYNC_ID_COLUMN})로 지정하세요`;
+  }
+  return null;
+}
 
 /** installation_jobs 조회행(매핑 대상 컬럼만). */
 export interface InstallationJobRow {

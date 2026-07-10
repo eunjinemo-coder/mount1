@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildInstallationWrite,
+  checkSyncIdOverlap,
+  DEFAULT_INSTALLATION_COLUMN_MAP,
+  DEFAULT_INSTALLATION_SYNC_ID_COLUMN,
   hasMinimalForCreate,
   isValidIsoDate,
   toFields,
@@ -115,5 +118,30 @@ describe('buildInstallationWrite — 매핑필드 → DB 쓰기객체', () => {
 
   it('빈 문자열 텍스트는 그대로 반영(칸 비우기 허용)', () => {
     expect(buildInstallationWrite({ special_notes: '' })).toEqual({ special_notes: '' });
+  });
+});
+
+describe('checkSyncIdOverlap — _sync_id 열 ↔ 데이터 열 충돌 가드', () => {
+  it('기본 sync_id 열(AI)은 기본 매핑(A~M)과 겹치지 않는다', () => {
+    expect(
+      checkSyncIdOverlap(DEFAULT_INSTALLATION_SYNC_ID_COLUMN, DEFAULT_INSTALLATION_COLUMN_MAP),
+    ).toBeNull();
+  });
+
+  it('sync_id 열이 데이터 열과 겹치면 한글 에러(예: 데이터열 A)', () => {
+    const err = checkSyncIdOverlap('A', DEFAULT_INSTALLATION_COLUMN_MAP);
+    expect(err).not.toBeNull();
+    expect(err).toContain('겹칩니다');
+    expect(err).toContain(DEFAULT_INSTALLATION_SYNC_ID_COLUMN); // 안내 열(AI) 포함
+  });
+
+  it("과거 위험 기본값(A/P)이 은진님 데이터열과 겹치는지 회귀 확인", () => {
+    // A=시공일자, P 도 데이터열이면 겹침 — 겹칠 때 반드시 거부되어야 한다.
+    expect(checkSyncIdOverlap('A', { A: 'scheduled_install_date' })).not.toBeNull();
+    expect(checkSyncIdOverlap('P', { P: 'special_notes' })).not.toBeNull();
+  });
+
+  it('겹치지 않는 빈 열은 통과(null)', () => {
+    expect(checkSyncIdOverlap('AI', { A: 'scheduled_install_date', M: 'special_notes' })).toBeNull();
   });
 });

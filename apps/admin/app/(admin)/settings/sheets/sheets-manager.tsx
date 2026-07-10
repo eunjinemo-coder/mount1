@@ -42,7 +42,7 @@ export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactEleme
     spreadsheetUrl: '',
     sheetName: '',
     columnMapJson: '',
-    syncIdColumn: 'A',
+    syncIdColumn: DEFAULT_INSTALLATION_SYNC_ID_COLUMN,
   });
 
   function refresh(): void {
@@ -60,7 +60,12 @@ export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactEleme
       });
       if (!res.ok) setError(res.error ?? '연결 실패');
       else {
-        setForm({ spreadsheetUrl: '', sheetName: '', columnMapJson: '', syncIdColumn: 'A' });
+        setForm({
+          spreadsheetUrl: '',
+          sheetName: '',
+          columnMapJson: '',
+          syncIdColumn: DEFAULT_INSTALLATION_SYNC_ID_COLUMN,
+        });
         refresh();
       }
     });
@@ -170,7 +175,7 @@ export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactEleme
               </label>
               <Input
                 id="ss-sync"
-                placeholder="A"
+                placeholder={DEFAULT_INSTALLATION_SYNC_ID_COLUMN}
                 value={form.syncIdColumn}
                 onChange={(e) => setForm({ ...form, syncIdColumn: e.target.value })}
               />

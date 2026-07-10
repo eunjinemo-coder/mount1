@@ -13,6 +13,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { callRpc } from '@mount/db';
 import type { OutboxRow, SheetLink } from '@mount/lib/sheets';
+import { DEFAULT_INSTALLATION_SYNC_ID_COLUMN } from './mapping';
 
 interface PgError {
   message: string;
@@ -45,7 +46,7 @@ function toLink(r: Record<string, unknown>): SheetLink {
     sheetName: String(r.sheet_name),
     entity: String(r.entity),
     columnMap: (r.column_map ?? {}) as Record<string, string>,
-    syncIdColumn: String(r.sync_id_column ?? 'A'),
+    syncIdColumn: String(r.sync_id_column ?? DEFAULT_INSTALLATION_SYNC_ID_COLUMN),
     headerRow: Number(r.header_row ?? 1),
     active: Boolean(r.active),
   };
