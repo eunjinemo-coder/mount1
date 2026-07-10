@@ -15,7 +15,7 @@ import { createInstallationAdapter } from './entity-adapter';
 import { createGoogleSheetsApi } from './sheets-client';
 import { createSheetSyncStore, type SheetSyncStore } from './store';
 
-/** entity 문자열 → 어댑터. 현재 installation(orders) 만. */
+/** entity 문자열 → 어댑터. 현재 installation(installation_jobs) 만. */
 function adapterFactory(client: SupabaseClient): (entity: string) => EntityAdapter | null {
   const installation = createInstallationAdapter(client);
   return (entity) => (entity === 'installation' ? installation : null);

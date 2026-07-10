@@ -1,0 +1,160 @@
+import { getServerClient } from '@mount/db';
+import { ForbiddenError, getSession, isValidUuid, RedirectError, requireRole } from '@mount/lib';
+import { Badge, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
+import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
+import type { ReactElement } from 'react';
+import { AdminShell } from '../../_layout/admin-shell';
+import type { InstallationFormInput } from '../actions';
+import { InstallationForm } from '../installation-form';
+
+export const metadata = { title: '시공 상세' };
+
+const WRITE_ROLES = ['super_admin', 'ops_admin'];
+
+const STATUS_LABEL: Record<string, string> = {
+  scheduled: '예정',
+  in_progress: '진행중',
+  completed: '완료',
+  cancelled: '취소',
+};
+
+interface JobRow {
+  id: string;
+  scheduled_install_date: string | null;
+  received_date: string | null;
+  move_date: string | null;
+  visit_time: string | null;
+  technician_name: string | null;
+  customer_phone: string | null;
+  customer_phone2: string | null;
+  address: string | null;
+  address_detail: string | null;
+  customer_name: string | null;
+  install_type: string | null;
+  install_content: string | null;
+  special_notes: string | null;
+  status: string | null;
+}
+
+const SELECT =
+  'id, scheduled_install_date, received_date, move_date, visit_time, technician_name, ' +
+  'customer_phone, customer_phone2, address, address_detail, customer_name, install_type, ' +
+  'install_content, special_notes, status';
+
+/** date 컬럼이 timestamptz 로 넘어와도 <input type=date> 용 YYYY-MM-DD 로. */
+function dateInput(value: string | null): string {
+  return value ? value.slice(0, 10) : '';
+}
+
+function toInitial(row: JobRow): Partial<InstallationFormInput> {
+  return {
+    scheduled_install_date: dateInput(row.scheduled_install_date),
+    received_date: dateInput(row.received_date),
+    move_date: dateInput(row.move_date),
+    visit_time: row.visit_time ?? '',
+    technician_name: row.technician_name ?? '',
+    customer_phone: row.customer_phone ?? '',
+    customer_phone2: row.customer_phone2 ?? '',
+    address: row.address ?? '',
+    address_detail: row.address_detail ?? '',
+    customer_name: row.customer_name ?? '',
+    install_type: row.install_type ?? '',
+    install_content: row.install_content ?? '',
+    special_notes: row.special_notes ?? '',
+    status: row.status ?? 'scheduled',
+  };
+}
+
+export default async function InstallationDetailPage(props: {
+  params: Promise<{ id: string }>;
+}): Promise<ReactElement> {
+  const { id } = await props.params;
+  try {
+    await requireRole(['admin']);
+  } catch (error) {
+    if (error instanceof RedirectError) redirect(`/login?redirect=/installations/${id}`);
+    if (error instanceof ForbiddenError) redirect('/login?error=forbidden');
+    throw error;
+  }
+  if (!isValidUuid(id)) notFound();
+
+  const client = await getServerClient();
+  const { data } = await (
+    client as unknown as {
+      from: (t: string) => {
+        select: (c: string) => {
+          eq: (c: string, v: string) => {
+            maybeSingle: () => PromiseLike<{ data: JobRow | null }>;
+          };
+        };
+      };
+    }
+  )
+    .from('installation_jobs')
+    .select(SELECT)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!data) notFound();
+
+  const session = await getSession();
+  const canWrite = !!session && WRITE_ROLES.includes(session.adminRole ?? '');
+
+  return (
+    <AdminShell activeNav="installations" title="시공 상세">
+      <div className="mx-auto max-w-screen-md space-y-6 px-6 py-6">
+        <header className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold">{data.customer_name ?? '시공 상세'}</h2>
+            <Badge variant="outline">{STATUS_LABEL[data.status ?? ''] ?? data.status ?? '-'}</Badge>
+          </div>
+          <Link className="text-muted-foreground text-sm hover:underline" href="/installations">
+            ← 목록
+          </Link>
+        </header>
+
+        {canWrite ? (
+          <InstallationForm id={data.id} initial={toInitial(data)} />
+        ) : (
+          <ReadonlyView row={data} />
+        )}
+      </div>
+    </AdminShell>
+  );
+}
+
+function ReadonlyView({ row }: { row: JobRow }): ReactElement {
+  const items: { label: string; value: string | null }[] = [
+    { label: '시공일자', value: row.scheduled_install_date },
+    { label: '접수일자', value: row.received_date },
+    { label: '이사일자', value: row.move_date },
+    { label: '방문시간', value: row.visit_time },
+    { label: '담당자', value: row.technician_name },
+    { label: '성함', value: row.customer_name },
+    { label: '연락처', value: row.customer_phone },
+    { label: '연락처2', value: row.customer_phone2 },
+    { label: '주소', value: row.address },
+    { label: '상세주소', value: row.address_detail },
+    { label: '타입', value: row.install_type },
+    { label: '설치내용', value: row.install_content },
+    { label: '특이사항', value: row.special_notes },
+  ];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">시공 정보 (읽기 전용)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <dl className="divide-y text-sm">
+          {items.map((it) => (
+            <div className="flex gap-4 py-2" key={it.label}>
+              <dt className="text-muted-foreground w-24 shrink-0">{it.label}</dt>
+              <dd className="min-w-0">{it.value ?? '-'}</dd>
+            </div>
+          ))}
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}

@@ -9,6 +9,7 @@
 import { getServerClient } from '@mount/db';
 import { assertAdminRole } from '@mount/lib';
 import { revalidatePath } from 'next/cache';
+import { INSTALLATION_FIELD_KEYS } from '@/lib/sheets/mapping';
 
 const SHEETS_ROLES = ['super_admin', 'dispatch_admin'] as const;
 
@@ -28,22 +29,11 @@ function parseSpreadsheetId(input: string): string | null {
 }
 
 /**
- * 매핑 가능한 앱 필드 화이트리스트 (entity-adapter/mapping.ts 와 일치).
- * 쓰기: status·scheduled_date·special_notes / 읽기전용 투영: 나머지.
+ * 매핑 가능한 앱 필드 화이트리스트 (mapping.ts 의 installation 필드키 13종과 일치).
+ * A~M 전부 양방향. status 는 앱 내부 상태라 시트 동기화 대상이 아니다(화이트리스트 제외).
  * code#7: 오타·미지원 필드·중복 매핑을 거부해 조용한 미반영/충돌을 방지.
  */
-const ALLOWED_SHEET_FIELDS = new Set([
-  'status',
-  'scheduled_date',
-  'special_notes',
-  'phone_tail4',
-  'region_sido',
-  'region_sigungu',
-  'tv_brand',
-  'tv_model',
-  'tv_size',
-  'technician_name',
-]);
+const ALLOWED_SHEET_FIELDS = new Set<string>(INSTALLATION_FIELD_KEYS);
 
 /** column_map JSON 검증 — Record<string,string>(열문자→앱필드). 화이트리스트+중복 거부. */
 function parseColumnMap(raw: string): { map?: Record<string, string>; error?: string } {

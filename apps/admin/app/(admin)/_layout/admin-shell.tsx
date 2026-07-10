@@ -5,6 +5,7 @@ import {
   Coffee,
   Cog,
   CreditCard,
+  Hammer,
   Home,
   MapPin,
   Package,
@@ -45,6 +46,7 @@ export interface AdminShellProps {
     | 'orders'
     | 'dispatch'
     | 'technicians'
+    | 'installations'
     | 'live'
     | 'payouts'
     | 'coupang'
@@ -58,6 +60,7 @@ export interface AdminShellProps {
 const NAV = [
   { id: 'today', label: '오늘', href: '/today', icon: Home },
   { id: 'orders', label: '주문', href: '/orders', icon: Package },
+  { id: 'installations', label: '시공', href: '/installations', icon: Hammer },
   { id: 'technicians', label: '기사', href: '/technicians', icon: Wrench },
   { id: 'dispatch', label: '배차', href: '/dispatch', icon: Users },
   { id: 'live', label: '실시간', href: '/live', icon: MapPin },

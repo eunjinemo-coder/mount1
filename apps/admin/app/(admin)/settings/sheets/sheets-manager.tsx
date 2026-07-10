@@ -6,9 +6,13 @@
  * 어드민 정숙 규율: 장식 채움 없이 상태·행동만.
  */
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mount/ui';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactElement } from 'react';
+import {
+  DEFAULT_INSTALLATION_COLUMN_MAP,
+  DEFAULT_INSTALLATION_SYNC_ID_COLUMN,
+} from '@/lib/sheets/mapping';
 import {
   connectSheetAction,
   retryFailedSyncAction,
@@ -26,8 +30,9 @@ export interface SheetLinkView {
   failed: number;
 }
 
-const COLUMN_MAP_PLACEHOLDER =
-  '{"B":"scheduled_date","C":"status","D":"phone_tail4","E":"special_notes"}';
+/** 은진님 양식 A~M 기본 매핑(프리셋). 확인만 하면 되도록 버튼으로 채운다. */
+const DEFAULT_MAP_JSON = JSON.stringify(DEFAULT_INSTALLATION_COLUMN_MAP, null, 2);
+const COLUMN_MAP_PLACEHOLDER = DEFAULT_MAP_JSON;
 
 export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactElement {
   const router = useRouter();
@@ -172,19 +177,38 @@ export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactEleme
             </div>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-muted-foreground text-xs" htmlFor="ss-map">
-              열 매핑 (JSON · 시트 열문자 → 앱 필드)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-muted-foreground text-xs" htmlFor="ss-map">
+                열 매핑 (JSON · 시트 열문자 → 앱 필드)
+              </label>
+              <Button
+                size="sm"
+                variant="ghost"
+                type="button"
+                onClick={() =>
+                  setForm((f) => ({
+                    ...f,
+                    columnMapJson: DEFAULT_MAP_JSON,
+                    syncIdColumn: DEFAULT_INSTALLATION_SYNC_ID_COLUMN,
+                  }))
+                }
+              >
+                <Wand2 className="mr-1 size-3.5" aria-hidden />
+                은진님 양식(A~M) 기본값 채우기
+              </Button>
+            </div>
             <textarea
               id="ss-map"
-              className="border-input bg-background min-h-20 rounded-md border px-3 py-2 font-mono text-xs"
+              className="border-input bg-background min-h-40 rounded-md border px-3 py-2 font-mono text-xs"
               placeholder={COLUMN_MAP_PLACEHOLDER}
               value={form.columnMapJson}
               onChange={(e) => setForm({ ...form, columnMapJson: e.target.value })}
             />
-            <p className="text-muted-foreground text-xs">
-              지원 필드: status · scheduled_date · special_notes(쓰기) / phone_tail4 · region_sido ·
-              region_sigungu · tv_brand · tv_model · tv_size · technician_name(읽기)
+            <p className="text-muted-foreground text-xs leading-6">
+              A 시공일자 · B 접수일자 · C 이사일자 · D 방문시간 · E 담당자 · F 연락처 · G 연락처2 · H
+              주소 · I 상세주소 · J 성함 · K 타입 · L 설치내용 · M 특이사항 (13열 전부 양방향). 상태는
+              앱에서만 관리하므로 시트 매핑 대상이 아닙니다. _sync_id 숨김열은 데이터열과 겹치지 않는
+              열(예: {DEFAULT_INSTALLATION_SYNC_ID_COLUMN})을 사용하세요.
             </p>
           </div>
           {error ? <p className="text-destructive text-sm">{error}</p> : null}
