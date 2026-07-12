@@ -1,0 +1,538 @@
+'use client';
+
+import { formatCurrencyKRW } from '@mount/lib/format';
+import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
+import { Minus, Plus, TrendingDown, Loader2, Info } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { AddressSearch } from '@/components/order/address-search';
+import { Field, inputCls } from '@/components/form/field';
+import { BANK_ACCOUNT, PAYMENT_DEADLINE_HOURS } from '@/lib/bank-info';
+import type { OrderCatalog, OrderVariant } from '@/lib/order-catalog';
+import { LIMITS, normalizePhoneDigits } from '@/lib/order-validation';
+import { calcTotalSavings, calcUnitSavings, resolveUnitPrice } from '@/lib/pricing';
+import { submitOrderAction } from '@/app/order/actions';
+
+/** 재방문 구매자용 배송정보 재사용 — 카드·비밀정보 아님(민감정보 저장 없음). */
+const BUYER_INFO_STORAGE_KEY = 'mount-store:buyer-info-v1';
+
+interface SavedBuyerInfo {
+  buyerName: string;
+  buyerPhone: string;
+  buyerCompany: string;
+  shipPostcode: string;
+  shipAddr1: string;
+  shipAddr2: string;
+}
+
+function loadSavedBuyerInfo(): SavedBuyerInfo | null {
+  try {
+    const raw = window.localStorage.getItem(BUYER_INFO_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as SavedBuyerInfo) : null;
+  } catch {
+    return null; // 파싱 실패·프라이빗 모드 등 — 프리필 없이 진행
+  }
+}
+
+function saveBuyerInfo(info: SavedBuyerInfo): void {
+  try {
+    window.localStorage.setItem(BUYER_INFO_STORAGE_KEY, JSON.stringify(info));
+  } catch {
+    // 저장 공간 부족 등 — 핵심 기능(주문 제출) 아니므로 조용히 무시
+  }
+}
+
+function clearSavedBuyerInfo(): void {
+  try {
+    window.localStorage.removeItem(BUYER_INFO_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+type FieldKey =
+  | 'buyerName'
+  | 'buyerPhone'
+  | 'buyerCompany'
+  | 'bizRegNo'
+  | 'shipPostcode'
+  | 'shipAddr1'
+  | 'shipAddr2'
+  | 'shipMemo'
+  | 'depositorName'
+  | 'items';
+
+interface Props {
+  catalog: OrderCatalog;
+}
+
+export function OrderForm({ catalog }: Props): ReactElement {
+  const router = useRouter();
+  // 멱등키 — 마운트 시 1회 생성, 재시도에도 동일값 재사용(이중제출 차단)
+  const [clientKey] = useState<string>(() => crypto.randomUUID());
+
+  const [variantId, setVariantId] = useState<string>(catalog.variants[0]?.variantId ?? '');
+  const [qty, setQty] = useState<number>(1);
+  // 입력칸 표시용 문자열 — 편집 중 빈 값 허용(백스페이스로 지우고 새로 입력).
+  const [qtyText, setQtyText] = useState<string>('1');
+  const [addressManual, setAddressManual] = useState(false);
+  const addr2Ref = useRef<HTMLInputElement>(null);
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerCompany, setBuyerCompany] = useState('');
+  const [taxInvoice, setTaxInvoice] = useState(false);
+  const [bizRegNo, setBizRegNo] = useState('');
+  const [shipPostcode, setShipPostcode] = useState('');
+  const [shipAddr1, setShipAddr1] = useState('');
+  const [shipAddr2, setShipAddr2] = useState('');
+  const [shipMemo, setShipMemo] = useState('');
+  const [depositorName, setDepositorName] = useState('');
+  const [prefilled, setPrefilled] = useState(false);
+
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const [formError, setFormError] = useState<string | undefined>();
+  const [submitting, setSubmitting] = useState(false);
+
+  // 재방문 구매자 프리필 — 마운트 시 1회, 클라이언트에서만(SSR 미접근)
+  useEffect(() => {
+    const saved = loadSavedBuyerInfo();
+    if (!saved) return;
+    setBuyerName(saved.buyerName);
+    setBuyerPhone(saved.buyerPhone);
+    setBuyerCompany(saved.buyerCompany);
+    setShipPostcode(saved.shipPostcode);
+    setShipAddr1(saved.shipAddr1);
+    setShipAddr2(saved.shipAddr2);
+    setPrefilled(true);
+  }, []);
+
+  const clearPrefill = (): void => {
+    clearSavedBuyerInfo();
+    setBuyerName('');
+    setBuyerPhone('');
+    setBuyerCompany('');
+    setShipPostcode('');
+    setShipAddr1('');
+    setShipAddr2('');
+    setPrefilled(false);
+  };
+
+  const variant: OrderVariant | undefined = useMemo(
+    () => catalog.variants.find((v) => v.variantId === variantId) ?? catalog.variants[0],
+    [catalog.variants, variantId],
+  );
+
+  const maxQty = Math.max(1, variant?.stock ?? 1);
+  const unitPrice = variant ? resolveUnitPrice(variant.basePrice, variant.tiers, qty) : 0;
+  const total = unitPrice * qty;
+  const unitSavings = variant ? calcUnitSavings(variant.basePrice, unitPrice) : 0;
+  const totalSavings = variant ? calcTotalSavings(variant.basePrice, unitPrice, qty) : 0;
+
+  const clamp = (next: number): number => Math.min(maxQty, Math.max(1, Math.floor(next)));
+
+  // 스텝퍼·확정용 — 숫자와 표시문자열을 함께 갱신.
+  const commitQty = (next: number): void => {
+    if (Number.isNaN(next)) return;
+    const clamped = clamp(next);
+    setQty(clamped);
+    setQtyText(String(clamped));
+  };
+
+  // 직접 입력 — 빈 값·선행 0 은 편집 중 그대로 두고(스냅 방지), 유효 숫자일 때만 즉시 clamp.
+  // 계산(qty)은 마지막 유효값을 유지하고, 빈/0 은 blur 에서 확정한다.
+  const onQtyInput = (raw: string): void => {
+    const digits = raw.replace(/\D/g, '');
+    if (digits === '' || Number(digits) === 0) {
+      setQtyText(digits);
+      return;
+    }
+    const clamped = clamp(Number(digits));
+    setQty(clamped);
+    setQtyText(String(clamped));
+  };
+
+  const onQtyBlur = (): void => {
+    if (qtyText.trim() === '' || Number(qtyText) < 1) commitQty(qty);
+  };
+
+  // 옵션 변경 등으로 재고 상한이 바뀌면 수량을 상한 안으로 보정.
+  // 두 상태를 각각 순수 업데이터로 갱신(업데이터 안에서 다른 setState 호출하지 않음).
+  useEffect(() => {
+    setQty((q) => Math.min(maxQty, Math.max(1, q)));
+    setQtyText((t) => {
+      const n = Number(t.replace(/\D/g, ''));
+      const safe = Number.isNaN(n) || n < 1 ? 1 : n;
+      return String(Math.min(maxQty, Math.max(1, safe)));
+    });
+  }, [maxQty]);
+
+  const onSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    // 인풋 포커스 중 Enter 제출 시 blur 미선행 → 빈 표시값을 마지막 유효 수량으로 복원(전송 qty 는 이미 유효).
+    if (!qtyText.trim()) setQtyText(String(qty));
+    if (submitting || !catalog.seeded || !variant) return;
+    setSubmitting(true);
+    setErrors({});
+    setFormError(undefined);
+
+    try {
+      const result = await submitOrderAction({
+        clientKey,
+        slug: catalog.slug,
+        items: [{ variantId: variant.variantId, qty }],
+        buyerName,
+        buyerPhone,
+        buyerCompany,
+        taxInvoice,
+        bizRegNo,
+        shipPostcode,
+        shipAddr1,
+        shipAddr2,
+        shipMemo,
+        depositorName,
+      });
+
+      if (result.ok) {
+        saveBuyerInfo({ buyerName, buyerPhone, buyerCompany, shipPostcode, shipAddr1, shipAddr2 });
+        router.push(`/order/done/${result.orderNo}` as Route);
+        return; // 리다이렉트 중 submitting 유지(중복 클릭 방지)
+      }
+      setErrors(result.fieldErrors ?? {});
+      setFormError(result.formError);
+      setSubmitting(false);
+    } catch {
+      // 네트워크/서버 예외: 새로고침을 유도하지 않고 같은 마운트(같은 clientKey)로 재시도하게 한다.
+      // 첫 요청이 서버에서 성공했더라도 동일 clientKey 재전송 → create_store_order 멱등이 기존 주문 반환.
+      setFormError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form className="space-y-8" noValidate onSubmit={onSubmit}>
+      {!catalog.seeded && (
+        <p className="border-border text-muted-foreground flex items-start gap-2 rounded-xl border px-4 py-3 text-sm leading-6">
+          <Info className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>
+            실 상품 데이터 연동 준비 중입니다. 지금은 금액·구성 미리보기만 가능하며, 곧 바로 주문
+            접수가 열립니다.
+          </span>
+        </p>
+      )}
+
+      {/* 상품·수량 */}
+      <section className="space-y-4">
+        <h2 className="text-base font-bold">상품 · 수량</h2>
+
+        {catalog.variants.length > 1 && (
+          <div className="grid gap-2">
+            {catalog.variants.map((v) => (
+              <button
+                key={v.variantId || v.sku}
+                type="button"
+                onClick={() => setVariantId(v.variantId)}
+                className={[
+                  'flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors',
+                  v.variantId === variantId ? 'border-primary' : 'border-input',
+                ].join(' ')}
+              >
+                <span className={v.variantId === variantId ? 'font-semibold' : 'font-medium'}>
+                  {v.name}
+                </span>
+                <span
+                  className={[
+                    'tabular',
+                    v.variantId === variantId ? 'text-primary font-semibold' : 'text-muted-foreground',
+                  ].join(' ')}
+                >
+                  {formatCurrencyKRW(v.basePrice)}부터
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-input p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{variant?.name}</p>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                재고 {maxQty.toLocaleString('ko-KR')}개 · {maxQty}개까지 주문 가능
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                aria-label="수량 1개 감소"
+                onClick={() => commitQty(qty - 1)}
+                className="flex size-11 items-center justify-center rounded-xl border border-input text-muted-foreground disabled:opacity-40"
+                disabled={qty <= 1}
+              >
+                <Minus className="size-4" aria-hidden />
+              </button>
+              <input
+                type="text"
+                inputMode="numeric"
+                aria-label="수량"
+                value={qtyText}
+                onChange={(e) => onQtyInput(e.target.value)}
+                onBlur={onQtyBlur}
+                className="tabular h-11 w-20 rounded-xl border border-input text-center text-lg font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-ring"
+              />
+              <button
+                type="button"
+                aria-label="수량 1개 증가"
+                onClick={() => commitQty(qty + 1)}
+                className="flex size-11 items-center justify-center rounded-xl border border-input text-muted-foreground disabled:opacity-40"
+                disabled={qty >= maxQty}
+              >
+                <Plus className="size-4" aria-hidden />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-baseline justify-between border-t border-input pt-3">
+            <span className="text-sm font-semibold">총 결제금액</span>
+            <span className="tabular text-2xl font-bold">{formatCurrencyKRW(total)}</span>
+          </div>
+          <p className="text-muted-foreground tabular mt-1 text-right text-xs">
+            개당 {formatCurrencyKRW(unitPrice)} × {qty.toLocaleString('ko-KR')}개
+          </p>
+          {unitSavings > 0 && (
+            <div className="text-success mt-2 flex items-center justify-end gap-1.5 text-sm font-medium">
+              <TrendingDown className="size-4 shrink-0" aria-hidden />
+              <span className="tabular">
+                개당 {formatCurrencyKRW(unitSavings)} · 총 {formatCurrencyKRW(totalSavings)} 절감
+              </span>
+            </div>
+          )}
+          {errors.items && (
+            <p className="text-destructive mt-2 text-xs leading-5" role="alert">
+              {errors.items}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* 주문자 */}
+      <section className="space-y-4">
+        <h2 className="text-base font-bold">주문자 정보</h2>
+        {prefilled && (
+          <p className="border-border text-muted-foreground flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-xs leading-5">
+            <span>저장된 정보로 채웠어요</span>
+            <button
+              type="button"
+              onClick={clearPrefill}
+              className="text-foreground shrink-0 underline underline-offset-2"
+            >
+              지우기
+            </button>
+          </p>
+        )}
+        <Field label="이름" htmlFor="buyerName" required error={errors.buyerName}>
+          <input
+            id="buyerName"
+            autoComplete="name"
+            maxLength={LIMITS.name.max}
+            value={buyerName}
+            onChange={(e) => setBuyerName(e.target.value)}
+            placeholder="예: 김현장"
+            className={inputCls(errors.buyerName)}
+          />
+        </Field>
+        <Field
+          label="휴대폰"
+          htmlFor="buyerPhone"
+          required
+          error={errors.buyerPhone}
+          hint="하이픈(-) 없이 숫자만. 예: 01012345678"
+        >
+          <input
+            id="buyerPhone"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            maxLength={11}
+            value={buyerPhone}
+            onChange={(e) => setBuyerPhone(normalizePhoneDigits(e.target.value).slice(0, 11))}
+            placeholder="01012345678"
+            className={inputCls(errors.buyerPhone)}
+          />
+        </Field>
+        <Field label="상호 (선택)" htmlFor="buyerCompany" error={errors.buyerCompany}>
+          <input
+            id="buyerCompany"
+            autoComplete="organization"
+            maxLength={LIMITS.company.max}
+            value={buyerCompany}
+            onChange={(e) => setBuyerCompany(e.target.value)}
+            placeholder="사업자 구매 시"
+            className={inputCls(errors.buyerCompany)}
+          />
+        </Field>
+
+        <label className="flex items-center gap-2.5 rounded-xl border border-input px-4 py-3">
+          <input
+            type="checkbox"
+            checked={taxInvoice}
+            onChange={(e) => setTaxInvoice(e.target.checked)}
+            className="size-4"
+          />
+          <span className="text-sm font-medium">세금계산서 발행 요청</span>
+        </label>
+        {taxInvoice && (
+          <Field
+            label="사업자등록번호"
+            htmlFor="bizRegNo"
+            required
+            error={errors.bizRegNo}
+            hint="숫자 10자리"
+          >
+            <input
+              id="bizRegNo"
+              inputMode="numeric"
+              maxLength={12}
+              value={bizRegNo}
+              onChange={(e) => setBizRegNo(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="0000000000"
+              className={inputCls(errors.bizRegNo)}
+            />
+          </Field>
+        )}
+      </section>
+
+      {/* 배송지 */}
+      <section className="space-y-4">
+        <h2 className="text-base font-bold">배송지</h2>
+
+        <AddressSearch
+          onSelected={({ postcode, address }) => {
+            setShipPostcode(postcode);
+            setShipAddr1(address);
+            setAddressManual(false);
+            setErrors((prev) => ({ ...prev, shipPostcode: undefined, shipAddr1: undefined }));
+            requestAnimationFrame(() => addr2Ref.current?.focus());
+          }}
+          onError={() => setAddressManual(true)}
+        />
+
+        <Field
+          label="우편번호"
+          htmlFor="shipPostcode"
+          required
+          error={errors.shipPostcode}
+          hint={addressManual ? '숫자 5자리' : '주소 검색으로 자동 입력됩니다'}
+        >
+          <input
+            id="shipPostcode"
+            inputMode="numeric"
+            autoComplete="postal-code"
+            readOnly={!addressManual}
+            maxLength={LIMITS.postcode.max}
+            value={shipPostcode}
+            onChange={(e) => setShipPostcode(e.target.value)}
+            placeholder={addressManual ? '12345' : '주소 검색 후 자동 입력'}
+            className={`${inputCls(errors.shipPostcode)}${!addressManual ? ' text-foreground read-only:cursor-default' : ''}`}
+          />
+        </Field>
+        <Field label="주소" htmlFor="shipAddr1" required error={errors.shipAddr1}>
+          <input
+            id="shipAddr1"
+            autoComplete="address-line1"
+            readOnly={!addressManual}
+            maxLength={LIMITS.addr1.max}
+            value={shipAddr1}
+            onChange={(e) => setShipAddr1(e.target.value)}
+            placeholder={addressManual ? '도로명 주소' : '주소 검색 후 자동 입력'}
+            className={`${inputCls(errors.shipAddr1)}${!addressManual ? ' text-foreground read-only:cursor-default' : ''}`}
+          />
+        </Field>
+        <Field label="상세주소 (선택)" htmlFor="shipAddr2" error={errors.shipAddr2}>
+          <input
+            id="shipAddr2"
+            ref={addr2Ref}
+            autoComplete="address-line2"
+            maxLength={LIMITS.addr2.max}
+            value={shipAddr2}
+            onChange={(e) => setShipAddr2(e.target.value)}
+            placeholder="동·호수 등"
+            className={inputCls(errors.shipAddr2)}
+          />
+        </Field>
+        <Field
+          label="배송 메모 (선택)"
+          htmlFor="shipMemo"
+          count={shipMemo.length}
+          max={LIMITS.memo.max}
+          error={errors.shipMemo}
+        >
+          <textarea
+            id="shipMemo"
+            rows={2}
+            maxLength={LIMITS.memo.max}
+            value={shipMemo}
+            onChange={(e) => setShipMemo(e.target.value)}
+            placeholder="부재 시 문 앞 등"
+            className={`${inputCls(errors.shipMemo)} resize-y`}
+          />
+        </Field>
+      </section>
+
+      {/* 결제 */}
+      <section className="space-y-4">
+        <h2 className="text-base font-bold">결제</h2>
+        <div className="rounded-xl border border-input px-4 py-3 text-sm leading-6">
+          <p className="font-semibold">무통장입금</p>
+          <p className="text-muted-foreground mt-1">
+            주문 완료 후 안내되는 계좌로 <b>{PAYMENT_DEADLINE_HOURS}시간 이내</b> 입금해 주세요.
+            입금 확인 후 출고됩니다. (입금 계좌: {BANK_ACCOUNT.bankName})
+          </p>
+        </div>
+        <Field
+          label="입금자명 (선택)"
+          htmlFor="depositorName"
+          error={errors.depositorName}
+          hint="주문자와 다를 경우 입력"
+        >
+          <input
+            id="depositorName"
+            maxLength={LIMITS.depositor.max}
+            value={depositorName}
+            onChange={(e) => setDepositorName(e.target.value)}
+            placeholder="입금자 성함"
+            className={inputCls(errors.depositorName)}
+          />
+        </Field>
+      </section>
+
+      {formError && (
+        <p
+          className="text-destructive border-destructive/40 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm"
+          role="alert"
+        >
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>{formError}</span>
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={submitting || !catalog.seeded}
+        aria-disabled={submitting || !catalog.seeded}
+        className="bg-primary text-primary-foreground flex h-13 min-h-[52px] w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {submitting ? (
+          <>
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            접수 중…
+          </>
+        ) : (
+          `${formatCurrencyKRW(total)} 주문 접수`
+        )}
+      </button>
+      <p className="text-muted-foreground text-center text-xs leading-5">
+        주문 접수 시 입력하신 정보로 주문이 생성되며, 계좌·금액이 SMS로 안내됩니다.
+      </p>
+    </form>
+  );
+}

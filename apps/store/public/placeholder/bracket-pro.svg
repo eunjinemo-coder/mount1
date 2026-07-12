@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">벽걸이프로 무타공 브라켓 프로</title>
+  <desc id="desc">55~85인치 TV용 무타공 벽걸이 브라켓 이미지 플레이스홀더</desc>
+  <defs>
+    <linearGradient id="bg-pro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eef2ff" />
+      <stop offset="100%" stop-color="#c7d2fe" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" rx="24" fill="url(#bg-pro)" />
+
+  <!-- 벽면 대형 TV 실루엣 -->
+  <rect x="160" y="120" width="480" height="250" rx="12" fill="#1e293b" opacity="0.92" />
+  <rect x="178" y="138" width="444" height="214" rx="4" fill="#0f172a" />
+
+  <!-- 무타공 브라켓 (강화형 — 지지대 2줄) -->
+  <g stroke="#1e40af" stroke-width="12" stroke-linecap="round" fill="none">
+    <path d="M400 370 L400 450" />
+    <path d="M310 410 L490 410" />
+    <path d="M330 440 L470 440" />
+    <path d="M310 410 L310 460" />
+    <path d="M490 410 L490 460" />
+  </g>
+  <circle cx="310" cy="460" r="11" fill="#1e40af" />
+  <circle cx="490" cy="460" r="11" fill="#1e40af" />
+
+  <!-- PRO 배지 -->
+  <rect x="620" y="130" width="110" height="44" rx="22" fill="#1e40af" />
+  <text x="675" y="158" font-family="'Pretendard', -apple-system, sans-serif" font-size="22" font-weight="800" fill="#ffffff" text-anchor="middle">
+    PRO
+  </text>
+
+  <!-- 하단 라벨 -->
+  <rect x="0" y="480" width="800" height="120" fill="#ffffff" opacity="0.85" />
+  <text x="400" y="528" font-family="'Pretendard', -apple-system, sans-serif" font-size="30" font-weight="700" fill="#1e3a8a" text-anchor="middle">
+    벽걸이프로 무타공 브라켓
+  </text>
+  <text x="400" y="566" font-family="'Pretendard', -apple-system, sans-serif" font-size="24" font-weight="600" fill="#1e40af" text-anchor="middle">
+    프로 · 55~85인치
+  </text>
+</svg>

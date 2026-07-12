@@ -3,6 +3,8 @@
 import { getServerClient } from '@mount/db';
 import { assertAdminRole, isValidUuid } from '@mount/lib';
 import { revalidatePath } from 'next/cache';
+// 시트 동기화 엔티티는 orders(쿠팡) → installation_jobs(은진님 본사 시공)로 재연결(0025).
+// orders 변경은 더 이상 시트로 큐잉하지 않는다(enqueueSheetSync 는 installation_jobs 전용).
 
 /**
  * Order status state machine — 정상 전이만 허용 (super_admin 은 force override 가능).
