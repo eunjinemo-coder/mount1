@@ -70,6 +70,10 @@ describe('시트 날짜 형식 변환 (은진님 시트 = "YYYY. M. D")', () => 
     expect(parseSheetDateToIso('2026.7.30')).toBe('2026-07-30');
     expect(parseSheetDateToIso('2026-07-30')).toBe('2026-07-30'); // 이미 ISO
     expect(parseSheetDateToIso('2026/7/30')).toBe('2026-07-30');
+    // 은진님 시트 입력 습관: YYYY- MM- DD + 요일 접미사
+    expect(parseSheetDateToIso('2025- 03- 01 / 토')).toBe('2025-03-01');
+    expect(parseSheetDateToIso('2025.3.1 (수)')).toBe('2025-03-01');
+    expect(parseSheetDateToIso('2025- 03- 11 / 화')).toBe('2025-03-11');
     expect(parseSheetDateToIso('7-10')).toBeNull(); // 연도 없음
     expect(parseSheetDateToIso('미정')).toBeNull();
   });

@@ -63,7 +63,9 @@ const DATE_RE = /^(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\s*\.?$/;
 const PHONE_ALLOWED_RE = /^[0-9\-\s()]+$/;
 
 function normalizeDate(value: string): string | null {
-  const m = DATE_RE.exec(value.trim());
+  // 요일 접미사 제거: "2025- 03- 01 / 토" · "2025.3.1 (수)" → 날짜부만(한국식 시트 입력 대응).
+  const stripped = value.trim().replace(/\s*[/(]\s*[월화수목금토일]\s*\)?\s*$/u, '').trim();
+  const m = DATE_RE.exec(stripped);
   if (!m) return null;
   const [, y, mo, d] = m;
   const month = Number(mo);

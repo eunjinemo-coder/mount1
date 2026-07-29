@@ -149,7 +149,8 @@ const SHEET_DATE_RE = /^(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\s*\.?$
  * (동기화 정렬·시트→앱 DB 쓰기·최소생성 판정이 공통으로 이 함수를 쓴다 — 형식 일관성의 단일 소스.)
  */
 export function parseSheetDateToIso(raw: string): string | null {
-  const t = raw.trim();
+  // 요일 접미사 제거: "2025- 03- 01 / 토" · "2025.3.1 (수)" 등 → 날짜부만. (은진님 시트 입력 습관 대응)
+  const t = raw.trim().replace(/\s*[/(]\s*[월화수목금토일]\s*\)?\s*$/u, '').trim();
   if (t.length === 0) return null;
   if (isValidIsoDate(t)) return t;
   const m = SHEET_DATE_RE.exec(t);
