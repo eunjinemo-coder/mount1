@@ -17,6 +17,10 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+// IP whitelist 60초 캐시 — 매 네비게이션마다 admin_users 왕복하지 않게(변경은 1분 내 반영).
+const WHITELIST_TTL_MS = 60_000;
+const whitelistCache = new Map<string, { at: number; found: boolean; whitelist: string[] }>();
+
 function getClientIp(req: NextRequest): string | null {
   // Vercel/Cloudflare 등 신뢰된 프록시: x-forwarded-for 첫 값 = 클라 IP.
   const xff = req.headers.get('x-forwarded-for');
@@ -53,9 +57,13 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     },
   });
 
+  // 성능: getUser()(매 요청 Supabase Auth 네트워크 왕복) 대신 getSession()(쿠키 로컬 파싱).
+  // 미들웨어의 역할은 UX 리다이렉트일 뿐 — 실제 보안 집행은 페이지 requireRole(서버 검증)
+  // + RLS(DB) 이중 방어가 담당하므로 위조 토큰은 데이터에 닿기 전에 걸러진다.
   const {
-    data: { user },
-  } = await client.auth.getUser();
+    data: { session },
+  } = await client.auth.getSession();
+  const user = session?.user ?? null;
 
   if (!user && !isPublic(req.nextUrl.pathname)) {
     const redirectUrl = new URL('/login', req.url);
@@ -63,26 +71,33 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // IP whitelist 검증 — 인증된 사용자에 대해서만, 공개 경로는 스킵.
+  // IP whitelist 검증 — 인증된 사용자에 대해서만, 공개 경로는 스킵. 60초 캐시로 DB 왕복 절감.
   if (user && !isPublic(req.nextUrl.pathname)) {
     try {
-      const { data: adminRow } = await client
-        .from('admin_users')
-        .select('ip_whitelist')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+      let entry = whitelistCache.get(user.id);
+      if (!entry || Date.now() - entry.at > WHITELIST_TTL_MS) {
+        const { data: adminRow } = await client
+          .from('admin_users')
+          .select('ip_whitelist')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        const raw = adminRow?.ip_whitelist;
+        entry = {
+          at: Date.now(),
+          found: adminRow !== null,
+          whitelist: Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : [],
+        };
+        whitelistCache.set(user.id, entry);
+      }
 
       // admin_users 미등록 = 인증은 됐으나 어드민 권한 없음 → 차단 (페이지 단 requireRole 보강).
-      if (adminRow === null) {
+      if (!entry.found) {
         const blocked = new URL('/login', req.url);
         blocked.searchParams.set('error', 'forbidden');
         return NextResponse.redirect(blocked);
       }
 
-      const raw = adminRow.ip_whitelist;
-      const whitelist: string[] = Array.isArray(raw)
-        ? raw.filter((x): x is string => typeof x === 'string')
-        : [];
+      const whitelist = entry.whitelist;
 
       // 빈 배열 = 운영 진입 전 fallback (모든 IP 허용). 등록된 항목이 있을 때만 강제.
       if (whitelist.length > 0) {

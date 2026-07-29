@@ -310,6 +310,9 @@ importers:
         specifier: ^19.0.0
         version: 19.2.5
     devDependencies:
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
       eslint:
         specifier: ^9.18.0
         version: 9.39.4(jiti@1.21.7)
