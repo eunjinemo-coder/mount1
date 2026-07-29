@@ -23,6 +23,7 @@ interface LinkRow {
 interface OutboxRow {
   link_id: string;
   status: string;
+  last_error: string | null;
 }
 interface LogRow {
   link_id: string | null;
@@ -86,7 +87,7 @@ export default async function SheetsSettingsPage(): Promise<ReactElement> {
 
   const [linksRes, outboxRes, logsRes] = await Promise.all([
     cast.from('sheet_links').select('id, spreadsheet_id, sheet_name, entity, column_map, active').order('created_at', { ascending: true }),
-    (cast.from('sync_outbox').select('link_id, status') as unknown as { in: (c: string, v: string[]) => PromiseLike<{ data: unknown }> }).in('status', ['pending', 'failed']),
+    (cast.from('sync_outbox').select('link_id, status, last_error') as unknown as { in: (c: string, v: string[]) => PromiseLike<{ data: unknown }> }).in('status', ['pending', 'failed']),
     cast.from('sync_log').select('link_id, direction, result, created_at').order('created_at', { ascending: false }).limit(10),
   ]);
 
@@ -115,6 +116,14 @@ export default async function SheetsSettingsPage(): Promise<ReactElement> {
   const totalPending = outboxRows.filter((r) => r.status === 'pending').length;
   const totalFailed = outboxRows.filter((r) => r.status === 'failed').length;
   const lastSuccess = logRows.find((l) => l.result === 'ok')?.created_at ?? null;
+  // 실패 원인(중복 제거) — 서비스계정/공유/탭이름/키형식 진단용.
+  const failedErrors = [
+    ...new Set(
+      outboxRows
+        .filter((r) => r.status === 'failed' && r.last_error)
+        .map((r) => r.last_error as string),
+    ),
+  ].slice(0, 5);
 
   return (
     <AdminShell title="구글시트 연동">
@@ -155,6 +164,21 @@ export default async function SheetsSettingsPage(): Promise<ReactElement> {
             </div>
           </CardContent>
         </Card>
+
+        {totalFailed > 0 && failedErrors.length > 0 ? (
+          <Card className="border-destructive/40">
+            <CardHeader>
+              <CardTitle className="text-destructive text-base">실패 원인 (최근)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {failedErrors.map((e, i) => (
+                <p key={i} className="text-destructive font-mono text-xs break-all">
+                  {e}
+                </p>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <SheetsManager links={links} />
 

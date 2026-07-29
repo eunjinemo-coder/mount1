@@ -14,7 +14,7 @@
  *   예: 9시=540(최소) · 12시=720 < 12시반=750 < 1시=780 < 1시반=810 < 2시=840 · 8시반=1230(최대)
  *   예상외 표기 → null(파싱 실패). 호출측은 그 날짜 그룹의 끝에 삽입 + 로그(등록 자체는 성공).
  */
-import { isValidIsoDate } from './mapping';
+import { parseSheetDateToIso } from './mapping';
 
 /** 파싱 실패 방문시간 → 해당 날짜 그룹의 끝으로(가장 큰 값). */
 export const VISIT_TIME_FALLBACK = 100000;
@@ -22,7 +22,6 @@ export const VISIT_TIME_FALLBACK = 100000;
 const DATE_FALLBACK = '9999-99-99';
 
 const VISIT_RE = /^(\d{1,2})\s*시\s*(반)?$/;
-const SHEET_DATE_RE = /^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/;
 
 /** "N시"/"N시반" → 하루 분(minutes). 예상외 표기/영업외 시간 → null. */
 export function parseVisitTimeMinutes(raw: string): number | null {
@@ -38,18 +37,11 @@ export function parseVisitTimeMinutes(raw: string): number | null {
 }
 
 /**
- * 시트 A열 날짜 원문 → ISO(YYYY-MM-DD). 이미 ISO 면 그대로, "2026.7.10"/"2026/7/10" 등도 허용.
- * 4자리 연도 없는 표기("7-10" 등)는 실패(null) → 호출측 append 폴백.
- * (엔진 column-map 의 날짜 정규화 규칙과 동일 형태 — 왕복 정합 유지)
+ * 시트 A열 날짜 원문 → ISO(YYYY-MM-DD). 매핑 모듈의 parseSheetDateToIso 에 위임(단일 소스).
+ * "2026-07-30" · "2026.7.30" · "2025. 3. 1"(점 뒤 공백) 등 허용, 4자리 연도 없으면 null.
  */
 export function normalizeSheetDate(raw: string): string | null {
-  const t = raw.trim();
-  if (t.length === 0) return null;
-  if (isValidIsoDate(t)) return t;
-  const m = SHEET_DATE_RE.exec(t);
-  if (!m) return null;
-  const iso = `${m[1]}-${m[2]!.padStart(2, '0')}-${m[3]!.padStart(2, '0')}`;
-  return isValidIsoDate(iso) ? iso : null;
+  return parseSheetDateToIso(raw);
 }
 
 export interface SortRow {
