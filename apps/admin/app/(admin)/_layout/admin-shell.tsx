@@ -57,11 +57,16 @@ export interface AdminShellProps {
   children: ReactNode;
 }
 
-const NAV = [
+// 코어 — 자사(본사) 시공 운영 (성장 마스터플랜 코어 B). 자사앱 우선 도메인.
+const CORE_NAV = [
   { id: 'today', label: '오늘', href: '/today', icon: Home },
-  { id: 'orders', label: '주문', href: '/orders', icon: Package },
   { id: 'installations', label: '시공', href: '/installations', icon: Hammer },
   { id: 'technicians', label: '기사', href: '/technicians', icon: Wrench },
+] as const;
+
+// 쿠팡 파일럿 — 현재 dormant(사실상 무산). 삭제 아님(부활 대비) · 메뉴만 격하.
+const COUPANG_NAV = [
+  { id: 'orders', label: '주문', href: '/orders', icon: Package },
   { id: 'dispatch', label: '배차', href: '/dispatch', icon: Users },
   { id: 'live', label: '실시간', href: '/live', icon: MapPin },
   { id: 'payouts', label: '정산', href: '/payouts', icon: CreditCard },
@@ -93,7 +98,13 @@ export async function AdminShell(props: AdminShellProps): Promise<ReactElement> 
           <span className="font-bold tracking-tight">마운트파트너스</span>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {NAV.map((item) => (
+          {CORE_NAV.map((item) => (
+            <NavLink isActive={props.activeNav === item.id} item={item} key={item.id} />
+          ))}
+          <p className="text-muted-foreground/70 px-3 pt-4 pb-1 text-[11px] font-semibold tracking-wider uppercase">
+            쿠팡 파일럿
+          </p>
+          {COUPANG_NAV.map((item) => (
             <NavLink isActive={props.activeNav === item.id} item={item} key={item.id} />
           ))}
           <p className="text-muted-foreground/70 px-3 pt-4 pb-1 text-[11px] font-semibold tracking-wider uppercase">
