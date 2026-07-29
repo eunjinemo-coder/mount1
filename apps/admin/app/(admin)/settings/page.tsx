@@ -1,7 +1,7 @@
 import { getServerClient } from '@mount/db';
 import { ForbiddenError, getSession, RedirectError, requireRole } from '@mount/lib';
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
-import { Cog, Database, Lock, Shield, Users } from 'lucide-react';
+import { Cog, Database, Lock, Sheet as SheetIcon, Shield, Users } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
@@ -60,6 +60,8 @@ export default async function SettingsPage(): Promise<ReactElement> {
 
   const roleLabel = ROLE_LABEL[session?.adminRole ?? ''] ?? '관리자';
   const roleDescription = ROLE_DESCRIPTION[session?.adminRole ?? ''] ?? '';
+  // 구글시트 연동 화면 접근 권한(= /settings/sheets 게이트와 동일)
+  const canSheets = ['super_admin', 'dispatch_admin'].includes(session?.adminRole ?? '');
 
   return (
     <AdminShell title="설정">
@@ -82,9 +84,9 @@ export default async function SettingsPage(): Promise<ReactElement> {
           <CardContent className="grid gap-4 text-sm md:grid-cols-2">
             <div>
               <p className="text-muted-foreground text-xs">역할</p>
-              <p className="mt-0.5 flex items-center gap-2 font-semibold">
+              <div className="mt-0.5 flex items-center gap-2 font-semibold">
                 <Badge>{roleLabel}</Badge>
-              </p>
+              </div>
               <p className="text-muted-foreground mt-1 text-xs">{roleDescription}</p>
             </div>
             <div>
@@ -181,6 +183,32 @@ export default async function SettingsPage(): Promise<ReactElement> {
                 <div>
                   <p className="font-medium">신규 기사 발급</p>
                   <p className="text-muted-foreground text-xs">로그인 계정 자동 생성</p>
+                </div>
+                <span className="text-muted-foreground text-sm">→</span>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* 연동 */}
+        {canSheets ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <SheetIcon className="size-4" aria-hidden />
+                연동
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link
+                className="hover:bg-muted/40 hover:border-primary/50 flex items-center justify-between rounded-md border p-3 transition-colors"
+                href="/settings/sheets"
+              >
+                <div>
+                  <p className="font-medium">구글시트 연동</p>
+                  <p className="text-muted-foreground text-xs">
+                    본사 시공 ↔ 구글시트 양방향 동기화 · 서비스계정 · 열 매핑
+                  </p>
                 </div>
                 <span className="text-muted-foreground text-sm">→</span>
               </Link>
