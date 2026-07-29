@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   transpilePackages: ['@mount/ui', '@mount/lib', '@mount/db'],
   typedRoutes: true,
+  experimental: {
+    // 시공 사진 업로드는 서버액션 FormData 로 최대 10MB 파일 전송(multipart 오버헤드 여유 포함).
+    // 기본 1MB 로는 폰 사진이 막힘 → 12MB 로 상향(uploadInstallationPhotoAction 의 MAX_BYTES=10MB 와 정합).
+    serverActions: {
+      bodySizeLimit: '12mb',
+    },
+  },
   async headers() {
     return [
       {
