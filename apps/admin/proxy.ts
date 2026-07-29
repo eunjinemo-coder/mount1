@@ -103,6 +103,9 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   return response;
 }
 
+// api/sheets-webhook(구글 Apps Script HMAC 인증) · api/cron(CRON_SECRET) 은 세션이 없으므로
+// 미들웨어 세션 가드에서 제외한다(각 라우트가 자체 인증). 제외 안 하면 /login 으로 307 리다이렉트돼
+// 외부 웹훅/크론이 처리기에 도달하지 못한다.
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health|api/sheets-webhook|api/cron).*)'],
 };
