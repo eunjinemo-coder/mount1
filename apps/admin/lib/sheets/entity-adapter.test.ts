@@ -181,10 +181,11 @@ describe('createInstallationAdapter.applyInbound — 기존행 UPDATE', () => {
 });
 
 describe('createInstallationAdapter.archive', () => {
-  it('비파괴 — installation_jobs 를 건드리지 않는다(no-op)', async () => {
+  it("시트 행삭제 → 앱 상태 '취소' 표시(하드삭제 아님 — 데이터 보존)", async () => {
     const { client, captured } = makeClient({});
     await createInstallationAdapter(client).archive('j1');
-    expect(captured.op).toBeUndefined();
+    expect(captured.op).toBe('update');
+    expect(captured.values).toEqual({ status: 'cancelled' });
   });
 });
 
@@ -293,7 +294,9 @@ describe('엔진 결선 — 어댑터를 processInboundRow 에 주입', () => {
     );
     expect(outcome.result).toBe('ok');
     expect(outcome.writeBack).toBe('archived');
-    expect(captured.op).toBeUndefined(); // installation_jobs 미변경(보관은 side-table)
+    // 보관 마킹(side-table) + 앱 상태 '취소' 표시(하드삭제 아님)
+    expect(captured.op).toBe('update');
+    expect(captured.values).toEqual({ status: 'cancelled' });
   });
 
   it('에코(incoming hash == last_synced_hash) → skipped_noop(앱 미반영)', async () => {

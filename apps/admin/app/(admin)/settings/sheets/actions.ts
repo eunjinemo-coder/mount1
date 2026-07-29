@@ -137,6 +137,24 @@ export async function toggleSheetActiveAction(linkId: string, active: boolean): 
   return { ok: true };
 }
 
+/**
+ * 시트 연결 삭제 — sheet_links 행 제거. 대기열/행매핑/멱등키는 link_id FK cascade 로 함께
+ * 정리되고(0024), sync_log 는 link_id=null 로 보존된다. 시트 자체는 건드리지 않는다.
+ */
+export async function deleteSheetLinkAction(linkId: string): Promise<SheetsActionResult> {
+  await assertAdminRole(SHEETS_ROLES);
+  const client = await getServerClient();
+  const { error } = await (
+    client as unknown as { from: (t: string) => { delete: () => { eq: (c: string, val: string) => PromiseLike<{ error: { message: string } | null }> } } }
+  )
+    .from('sheet_links')
+    .delete()
+    .eq('id', linkId);
+  if (error) return { ok: false, error: '연결 삭제 실패(권한 확인)' };
+  revalidatePath('/settings/sheets');
+  return { ok: true };
+}
+
 /** 실패한 outbox 를 pending 으로 되돌려 다음 크론에 재시도. */
 export async function retryFailedSyncAction(linkId: string): Promise<SheetsActionResult> {
   await assertAdminRole(SHEETS_ROLES);

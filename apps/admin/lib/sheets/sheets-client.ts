@@ -245,6 +245,42 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
 }
 
 /**
+ * 앱 삭제 → 시트 행 자체 삭제. deleteDimension 이라 아래 행들이 자동으로 올라와
+ * 빈 행이 남지 않는다(재정렬 불필요). 행은 sync_row_id 숨김열로 식별(행순서 비의존).
+ * 행이 이미 없으면(수동삭제 등) no-op.
+ */
+export async function deleteSheetRowBySyncId(
+  sa: GoogleServiceAccount,
+  link: SheetLink,
+  syncRowId: string,
+): Promise<{ deleted: boolean }> {
+  const token = await getAccessToken(sa);
+  const rowNumber = await findRowNumber(token, link, syncRowId);
+  if (rowNumber === null) return { deleted: false }; // 시트에 이미 없음
+  const sheetId = await getSheetId(token, link.spreadsheetId, link.sheetName);
+  const res = await fetch(`${SHEETS_BASE}/${link.spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowNumber - 1, // grid 는 0-base
+              endIndex: rowNumber,
+            },
+          },
+        },
+      ],
+    }),
+  });
+  if (!res.ok) throw await sheetErr('sheets_delete_failed', res);
+  return { deleted: true };
+}
+
+/**
  * 인메모리 SheetsApi — 테스트/개발/드라이런용. syncRowId 로 upsert 를 시뮬레이션.
  * 실 API 를 절대 호출하지 않는다.
  */

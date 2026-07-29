@@ -8,10 +8,14 @@
  * 저장 성공 후 enqueueSheetSync(id) → 활성 시트 링크로 앱→시트 반영(best-effort).
  */
 import { getServerClient } from '@mount/db';
-import { assertAdminRole, isValidUuid } from '@mount/lib';
+import { getAdminClient } from '@mount/db/admin';
+import { assertAdminRole, isValidUuid, log } from '@mount/lib';
 import { revalidatePath } from 'next/cache';
+import { hasGoogleServiceAccount, loadGoogleServiceAccount } from '@/lib/sheets/config';
 import { enqueueSheetSync } from '@/lib/sheets/enqueue';
 import { isValidIsoDate } from '@/lib/sheets/mapping';
+import { deleteSheetRowBySyncId } from '@/lib/sheets/sheets-client';
+import { createSheetSyncStore } from '@/lib/sheets/store';
 
 const WRITE_ROLES = ['super_admin', 'ops_admin'] as const;
 // 'use server' 파일은 async 함수만 export 가능(Next.js 제약) → 모듈 내부 상수로 유지(비export).
@@ -145,4 +149,88 @@ export async function updateInstallationJobAction(
   revalidatePath('/installations');
   revalidatePath(`/installations/${id}`);
   return { ok: true, id };
+}
+
+const DELETE_MAX = 100; // 한 번에 지울 수 있는 최대 건수(실수 방어)
+const PHOTO_BUCKET = 'photos-hot';
+
+export interface DeleteJobsResult {
+  ok: boolean;
+  deleted: number;
+  sheetDeleted: number;
+  error?: string;
+}
+
+/**
+ * 시공건 일괄 삭제 — 사람이 명시적으로 수행하는 유일한 하드삭제 경로.
+ *
+ * 순서(건별): ① 연결 시트의 해당 행 삭제(deleteDimension — 빈 행 안 남음, best-effort)
+ *   ② 동기화 side-table(sync_outbox·sheet_row_map) 정리(FK restrict 해제)
+ *   ③ 사진 Storage 오브젝트 회수(best-effort) ④ installation_jobs 삭제(사진 메타는 cascade).
+ * service_role 사용: side-table 은 워커 전용 RLS 라 admin 세션으론 정리 불가.
+ */
+export async function deleteInstallationJobsAction(ids: string[]): Promise<DeleteJobsResult> {
+  await assertAdminRole(WRITE_ROLES);
+  const valid = [...new Set(ids)].filter((id) => isValidUuid(id));
+  if (valid.length === 0) return { ok: false, deleted: 0, sheetDeleted: 0, error: '선택된 시공이 없습니다.' };
+  if (valid.length > DELETE_MAX) {
+    return { ok: false, deleted: 0, sheetDeleted: 0, error: `한 번에 ${DELETE_MAX}건까지만 삭제할 수 있어요.` };
+  }
+
+  const admin = getAdminClient();
+  const store = createSheetSyncStore(admin);
+  const sa = hasGoogleServiceAccount() ? loadGoogleServiceAccount() : null;
+  const cast = admin as unknown as {
+    from: (t: string) => {
+      select: (c: string) => { in: (c: string, v: string[]) => PromiseLike<{ data: Record<string, unknown>[] | null }> };
+      delete: () => { in: (c: string, v: string[]) => PromiseLike<{ error: { message: string } | null }> };
+    };
+  };
+
+  // ① 시트 행 삭제(best-effort) — 링크별 row_map 의 sync_row_id 로 행 식별
+  let sheetDeleted = 0;
+  const { data: rowMaps } = await cast
+    .from('sheet_row_map')
+    .select('link_id, entity_id, sync_row_id')
+    .in('entity_id', valid);
+  if (sa) {
+    for (const rm of rowMaps ?? []) {
+      try {
+        const link = await store.getLink(String(rm.link_id));
+        if (!link || !link.active) continue;
+        const { deleted } = await deleteSheetRowBySyncId(sa, link, String(rm.sync_row_id));
+        if (deleted) sheetDeleted += 1;
+      } catch (e) {
+        // 시트 삭제 실패해도 앱 삭제는 진행(시트에 잔행 남으면 수동 정리) — 관측만.
+        log.warn('시트 행 삭제 실패(앱 삭제는 진행)', {
+          entityId: String(rm.entity_id),
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+  }
+
+  // ③ 사진 Storage 회수(best-effort) — 메타행은 ④ cascade 로 정리
+  const { data: photos } = await cast
+    .from('installation_photos')
+    .select('storage_path')
+    .in('installation_job_id', valid);
+  const paths = (photos ?? []).map((p) => String(p.storage_path)).filter((p) => p.length > 0);
+  if (paths.length > 0) {
+    const { error: rmErr } = await admin.storage.from(PHOTO_BUCKET).remove(paths);
+    if (rmErr) log.warn('시공사진 Storage 회수 실패(삭제는 진행)', { count: paths.length, error: rmErr.message });
+  }
+
+  // ② FK restrict 해제 → ④ 본체 삭제
+  const { error: outboxErr } = await cast.from('sync_outbox').delete().in('entity_id', valid);
+  if (outboxErr) return { ok: false, deleted: 0, sheetDeleted, error: '동기화 큐 정리 실패' };
+  const { error: mapErr } = await cast.from('sheet_row_map').delete().in('entity_id', valid);
+  if (mapErr) return { ok: false, deleted: 0, sheetDeleted, error: '행매핑 정리 실패' };
+  const { error: jobErr } = await cast.from('installation_jobs').delete().in('id', valid);
+  if (jobErr) return { ok: false, deleted: 0, sheetDeleted, error: '시공 삭제 실패' };
+
+  log.info('시공 일괄 삭제', { count: valid.length, sheetDeleted });
+  revalidatePath('/installations');
+  revalidatePath('/today');
+  return { ok: true, deleted: valid.length, sheetDeleted };
 }

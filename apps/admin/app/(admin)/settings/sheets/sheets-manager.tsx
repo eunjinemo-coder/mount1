@@ -6,7 +6,7 @@
  * 어드민 정숙 규율: 장식 채움 없이 상태·행동만.
  */
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mount/ui';
-import { RefreshCw, Wand2 } from 'lucide-react';
+import { RefreshCw, Trash2, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactElement } from 'react';
 import {
@@ -15,6 +15,7 @@ import {
 } from '@/lib/sheets/mapping';
 import {
   connectSheetAction,
+  deleteSheetLinkAction,
   retryFailedSyncAction,
   toggleSheetActiveAction,
 } from './actions';
@@ -132,6 +133,29 @@ export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactEleme
                     }
                   >
                     {link.active ? '동기화 중지' : '동기화 켜기'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive"
+                    disabled={pending}
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          `"${link.sheetName}" 연결을 삭제할까요?\n동기화 대기열·행매핑 기록이 함께 정리됩니다(시트 문서 자체는 그대로).`,
+                        )
+                      ) {
+                        return;
+                      }
+                      startTransition(async () => {
+                        const res = await deleteSheetLinkAction(link.id);
+                        if (!res.ok) setError(res.error ?? '연결 삭제 실패');
+                        refresh();
+                      });
+                    }}
+                  >
+                    <Trash2 className="mr-1 size-3.5" aria-hidden />
+                    삭제
                   </Button>
                 </div>
               </div>

@@ -1,27 +1,14 @@
 import { getServerClient } from '@mount/db';
 import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
-import { Badge, Button, Card, CardContent } from '@mount/ui';
+import { Button, Card, CardContent } from '@mount/ui';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
+import { InstallationsTable } from './installations-table';
 
 export const metadata = { title: '시공 관리' };
-
-const STATUS_LABEL: Record<string, string> = {
-  scheduled: '예정',
-  in_progress: '진행중',
-  completed: '완료',
-  cancelled: '취소',
-};
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  scheduled: 'outline',
-  in_progress: 'default',
-  completed: 'secondary',
-  cancelled: 'destructive',
-};
 
 const FILTERS = [
   { id: 'upcoming', label: '예정' },
@@ -117,60 +104,7 @@ export default async function InstallationsPage(props: {
 
         <Card>
           <CardContent className="pt-6">
-            {jobs.length === 0 ? (
-              <p className="text-muted-foreground text-sm">조회된 시공이 없습니다.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-xs uppercase tracking-wider">
-                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">시공일자</th>
-                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">방문시간</th>
-                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">성함</th>
-                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">주소</th>
-                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">담당자</th>
-                      <th className="text-muted-foreground px-2 py-3 text-left font-semibold">상태</th>
-                      <th className="px-2 py-3 text-right" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jobs.map((job) => (
-                      <tr
-                        className="hover:bg-muted/40 border-b transition-colors last:border-0"
-                        key={job.id}
-                      >
-                        <td className="px-2 py-3 font-medium tabular-nums">
-                          {job.scheduled_install_date ?? '미정'}
-                        </td>
-                        <td className="text-muted-foreground px-2 py-3">{job.visit_time ?? '-'}</td>
-                        <td className="px-2 py-3">{job.customer_name ?? '-'}</td>
-                        <td className="text-muted-foreground max-w-xs truncate px-2 py-3">
-                          {job.address ?? '-'}
-                        </td>
-                        <td className="px-2 py-3">
-                          {job.technician_name ?? (
-                            <span className="text-muted-foreground italic">미배정</span>
-                          )}
-                        </td>
-                        <td className="px-2 py-3">
-                          <Badge variant={STATUS_VARIANT[job.status ?? ''] ?? 'outline'}>
-                            {STATUS_LABEL[job.status ?? ''] ?? job.status ?? '-'}
-                          </Badge>
-                        </td>
-                        <td className="px-2 py-3 text-right">
-                          <Link
-                            className="text-primary hover:bg-primary/5 inline-flex items-center rounded px-2 py-1 text-xs font-medium hover:underline"
-                            href={`/installations/${job.id}`}
-                          >
-                            상세 →
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <InstallationsTable jobs={jobs} />
           </CardContent>
         </Card>
       </div>
