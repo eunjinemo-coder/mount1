@@ -14,7 +14,8 @@ import { enqueueSheetSync } from '@/lib/sheets/enqueue';
 import { isValidIsoDate } from '@/lib/sheets/mapping';
 
 const WRITE_ROLES = ['super_admin', 'ops_admin'] as const;
-export const INSTALLATION_STATUSES = [
+// 'use server' 파일은 async 함수만 export 가능(Next.js 제약) → 모듈 내부 상수로 유지(비export).
+const INSTALLATION_STATUSES = [
   'scheduled',
   'in_progress',
   'completed',
