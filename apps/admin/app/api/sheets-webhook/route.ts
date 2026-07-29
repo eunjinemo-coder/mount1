@@ -40,6 +40,8 @@ interface WebhookBody {
   values?: string[];
   deleted?: boolean;
   editedAt?: string;
+  /** 행삭제 reconcile: 시트에 "현재 남아있는" sync_id 전체 목록(onChange REMOVE_ROW 시). */
+  reconcileSyncIds?: string[];
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -75,6 +77,30 @@ export async function POST(request: Request): Promise<Response> {
     if (!link || !link.active) {
       // 연결 안 된 시트 → 조용히 무시(200, 재시도 유발 안 함)
       return Response.json({ ok: true, result: 'skipped_noop', reason: 'no_active_link' });
+    }
+
+    // 2.5) 행삭제 reconcile — onEdit 은 행 삭제를 감지 못 하므로(구글 제약), onChange 가
+    //      "현재 시트에 남은 sync_id 전체"를 보낸다. 우리 행매핑 중 목록에 없는 것 = 삭제된 행
+    //      → deleted 경로(보관 + 앱 상태 '취소'). 하드삭제는 하지 않는다(실수삭제 방어).
+    if (Array.isArray(body.reconcileSyncIds)) {
+      const present = new Set(body.reconcileSyncIds.map((s) => String(s)));
+      const active = await store.listActiveRowMaps(link.id);
+      const missing = active.filter((rm) => !present.has(rm.syncRowId));
+      const deps = makeInboundDeps(client, link.entity);
+      let archived = 0;
+      for (const rm of missing) {
+        const outcome = await processInboundRow(deps, {
+          linkId: link.id,
+          syncRowId: rm.syncRowId,
+          fields: {},
+          contentHash: '',
+          sheetUpdatedAt: body.editedAt ?? null,
+          deleted: true,
+        });
+        if (outcome.writeBack === 'archived') archived += 1;
+      }
+      log.info('sheets webhook reconcile', { link: link.id, checked: active.length, archived });
+      return Response.json({ ok: true, result: 'reconciled', archived });
     }
 
     // 3) 행 파싱 + 형식검증 + 해시

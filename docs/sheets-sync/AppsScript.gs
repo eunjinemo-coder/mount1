@@ -38,12 +38,13 @@ var CONFIG = {
   HEADER_ROWS: 1,          // 헤더 행 수(데이터는 그 다음 행부터)
 };
 
-/** 설치형 onEdit 트리거 설치 (1회 실행). */
+/** 설치형 onEdit + onChange 트리거 설치 (1회 실행). */
 function installTrigger() {
-  // 중복 설치 방지 — 기존 onEditSync 트리거 제거 후 재설치
+  // 중복 설치 방지 — 기존 동기화 트리거 제거 후 재설치
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'onEditSync') {
+    var fn = triggers[i].getHandlerFunction();
+    if (fn === 'onEditSync' || fn === 'onChangeSync') {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
@@ -51,7 +52,50 @@ function installTrigger() {
     .forSpreadsheet(SpreadsheetApp.getActive())
     .onEdit()
     .create();
-  SpreadsheetApp.getActive().toast('동기화 트리거 설치 완료', '벽걸이프로', 5);
+  // onChange: 행 삭제(REMOVE_ROW)는 onEdit 에 안 잡힌다 → 남은 sync_id 목록을 보내 앱이 대조(reconcile).
+  ScriptApp.newTrigger('onChangeSync')
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onChange()
+    .create();
+  SpreadsheetApp.getActive().toast('동기화 트리거 설치 완료 (편집+행삭제)', '벽걸이프로', 5);
+}
+
+/** 행 삭제 감지 → 현재 시트에 남은 sync_id 전체를 앱에 보내 대조(삭제행 = 앱에서 취소 처리). */
+function onChangeSync(e) {
+  try {
+    if (!e || e.changeType !== 'REMOVE_ROW') return;
+    var sheet = e.source.getActiveSheet();
+    var syncCol = colToIndex_(CONFIG.SYNC_ID_COL);
+    var lastRow = sheet.getLastRow();
+    var ids = [];
+    if (lastRow > CONFIG.HEADER_ROWS) {
+      var colValues = sheet
+        .getRange(CONFIG.HEADER_ROWS + 1, syncCol, lastRow - CONFIG.HEADER_ROWS, 1)
+        .getDisplayValues();
+      for (var i = 0; i < colValues.length; i++) {
+        var v = String(colValues[i][0] || '').trim();
+        if (v) ids.push(v);
+      }
+    }
+    var payload = {
+      spreadsheetId: e.source.getId(),
+      sheetName: sheet.getName(),
+      reconcileSyncIds: ids,
+      editedAt: new Date().toISOString(),
+    };
+    var body = JSON.stringify(payload);
+    var signature = sign_(CONFIG.WEBHOOK_SECRET, body);
+    var res = UrlFetchApp.fetch(CONFIG.WEBHOOK_URL, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: body,
+      headers: { 'x-sheets-signature': signature },
+      muteHttpExceptions: true,
+    });
+    console.log('reconcile ' + res.getResponseCode() + ' ' + String(res.getContentText()).slice(0, 200));
+  } catch (err) {
+    console.error('onChangeSync 실패: ' + err);
+  }
 }
 
 /** 열 문자 → 1-base 열 인덱스 (A→1). */

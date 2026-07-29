@@ -19,8 +19,9 @@ import 'server-only';
  *   applied=false(reason=create_requires_minimal_fields) → 웹훅이 ⚠ 표기(비파괴).
  *
  * ── archive ─────────────────────────────────────────────────────────────────
- *   시트 행 삭제 → 비파괴 보관은 sheet_row_map.archived_at 마킹(inbound store)으로 기록.
- *   installation_jobs 행은 건드리지 않는다(하드삭제/상태오염 금지 — §2.4 금지선).
+ *   시트 행 삭제 → sheet_row_map.archived_at 마킹(inbound store) + installation_jobs 는
+ *   status='cancelled' 로 표시(하드삭제는 하지 않음 — 시트 실수삭제 방어선. 진짜 삭제는
+ *   앱 목록의 선택삭제로 사람이 명시적으로 수행).
  */
 import type { EntityAdapter, EntityRecord } from '@mount/lib/sheets';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -79,8 +80,10 @@ export function createInstallationAdapter(client: SupabaseClient): EntityAdapter
       return { applied: true, entityId };
     },
 
-    async archive(_entityId: string): Promise<void> {
-      // 비파괴 보관은 sheet_row_map.archived_at 로 기록(inbound store). installation_jobs 는 건드리지 않음.
+    async archive(entityId: string): Promise<void> {
+      // 시트 행 삭제 → 앱에선 '취소' 상태로 표시(하드삭제 아님 — 실수삭제 방어).
+      // 실패는 조용히 무시(보관 마킹 자체는 inbound store 가 수행 — 상태표시는 best-effort).
+      await table().update({ status: 'cancelled' }).eq('id', entityId).select('id');
     },
   };
 }

@@ -71,6 +71,8 @@ export interface SheetSyncStore {
   ): Promise<{ entityId: string; lastSyncedHash: string | null; archivedAt: string | null } | null>;
   setRowMap(input: { linkId: string; entityId: string; syncRowId: string; lastSyncedHash: string }): Promise<void>;
   markArchived(linkId: string, syncRowId: string): Promise<void>;
+  /** 링크의 미보관 행매핑 목록(시트 행삭제 reconcile 용). */
+  listActiveRowMaps(linkId: string): Promise<{ syncRowId: string; entityId: string }[]>;
   // ── enqueue / lookup ──
   activeLinksForEntity(entity: string): Promise<SheetLink[]>;
   enqueueOutbox(linkId: string, entityId: string, contentHash: string): Promise<void>;
@@ -209,6 +211,18 @@ export function createSheetSyncStore(client: SupabaseClient): SheetSyncStore {
         lastSyncedHash: data.last_synced_hash === null ? null : String(data.last_synced_hash),
         archivedAt: data.archived_at === null ? null : String(data.archived_at),
       };
+    },
+
+    async listActiveRowMaps(linkId) {
+      const { data, error } = await tbl(client, 'sheet_row_map')
+        .select('sync_row_id, entity_id')
+        .eq('link_id', linkId)
+        .is('archived_at', null);
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((r) => ({
+        syncRowId: String(r.sync_row_id),
+        entityId: String(r.entity_id),
+      }));
     },
 
     async markArchived(linkId, syncRowId) {
