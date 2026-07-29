@@ -151,6 +151,29 @@ export async function updateInstallationJobAction(
   return { ok: true, id };
 }
 
+/**
+ * 상태만 전환(현장 원탭: 예정→진행중→완료 등). status 는 시트 미동기화라 enqueue 생략.
+ */
+export async function updateInstallationStatusAction(
+  id: string,
+  status: string,
+): Promise<InstallationActionResult> {
+  await assertAdminRole(WRITE_ROLES);
+  if (!isValidUuid(id)) return { ok: false, error: '잘못된 시공 ID' };
+  if (!INSTALLATION_STATUSES.includes(status as (typeof INSTALLATION_STATUSES)[number])) {
+    return { ok: false, error: '상태 값 오류' };
+  }
+  const client = await getServerClient();
+  const table = (client as unknown as { from: (t: string) => InsertBuilder }).from('installation_jobs');
+  const { data, error } = await table.update({ status }).eq('id', id).select('id');
+  if (error) return { ok: false, error: '상태 변경 실패' };
+  if (!data || data.length === 0) return { ok: false, error: '시공건을 찾을 수 없습니다.' };
+  revalidatePath('/installations');
+  revalidatePath(`/installations/${id}`);
+  revalidatePath('/today');
+  return { ok: true, id };
+}
+
 const DELETE_MAX = 100; // 한 번에 지울 수 있는 최대 건수(실수 방어)
 const PHOTO_BUCKET = 'photos-hot';
 

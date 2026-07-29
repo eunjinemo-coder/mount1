@@ -8,6 +8,7 @@ import { AdminShell } from '../../_layout/admin-shell';
 import type { InstallationFormInput } from '../actions';
 import { InstallationForm } from '../installation-form';
 import { InstallationPhotos, type InstallationPhotoView } from './installation-photos';
+import { StatusQuickActions } from './status-quick-actions';
 
 export const metadata = { title: '시공 상세' };
 
@@ -172,15 +173,97 @@ export default async function InstallationDetailPage(props: {
           </Link>
         </header>
 
+        {/* 현장 요약 — 기사가 첫눈에 봐야 하는 것: 언제/누구/연락처/어디/뭘 */}
+        <JobSummary row={data} />
+
+        {canWrite ? <StatusQuickActions id={data.id} status={data.status ?? 'scheduled'} /> : null}
+
+        <InstallationPhotos jobId={data.id} photos={photos} canWrite={canWrite} />
+
+        {/* 세부 수정은 접어둔다 — 현장 동선(요약→상태→사진)을 가리지 않게 */}
         {canWrite ? (
-          <InstallationForm id={data.id} initial={toInitial(data)} />
+          <details className="group rounded-lg border">
+            <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium select-none">
+              시공 정보 수정
+              <span aria-hidden className="transition-transform group-open:rotate-90">
+                →
+              </span>
+            </summary>
+            <div className="border-t p-4">
+              <InstallationForm id={data.id} initial={toInitial(data)} />
+            </div>
+          </details>
         ) : (
           <ReadonlyView row={data} />
         )}
-
-        <InstallationPhotos jobId={data.id} photos={photos} canWrite={canWrite} />
       </div>
     </AdminShell>
+  );
+}
+
+/** 전화번호 원문 → tel: 링크(숫자만). 숫자 7자리 미만이면 링크 없이 텍스트. */
+function telHref(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '');
+  return digits.length >= 7 ? `tel:${digits}` : null;
+}
+
+/** 현장 요약 카드 — 방문시간 크게, 연락처는 탭=전화. */
+function JobSummary({ row }: { row: JobRow }): ReactElement {
+  const phone = row.customer_phone;
+  const phoneLink = phone ? telHref(phone) : null;
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-6">
+        <div className="flex items-baseline gap-3">
+          <p className="text-3xl font-bold tabular-nums">{row.visit_time ?? '시간 미정'}</p>
+          <p className="text-muted-foreground text-sm tabular-nums">
+            {row.scheduled_install_date?.slice(0, 10) ?? '날짜 미정'}
+          </p>
+        </div>
+        <dl className="space-y-1.5 text-sm">
+          <div className="flex gap-3">
+            <dt className="text-muted-foreground w-14 shrink-0">성함</dt>
+            <dd className="font-medium">{row.customer_name ?? '-'}</dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="text-muted-foreground w-14 shrink-0">연락처</dt>
+            <dd>
+              {phone ? (
+                phoneLink ? (
+                  <a className="text-primary font-medium underline underline-offset-2" href={phoneLink}>
+                    {phone}
+                  </a>
+                ) : (
+                  phone
+                )
+              ) : (
+                '-'
+              )}
+            </dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="text-muted-foreground w-14 shrink-0">주소</dt>
+            <dd className="min-w-0 break-keep">
+              {[row.address, row.address_detail].filter(Boolean).join(' ') || '-'}
+            </dd>
+          </div>
+          {row.install_content ? (
+            <div className="flex gap-3">
+              <dt className="text-muted-foreground w-14 shrink-0">설치내용</dt>
+              <dd className="min-w-0 whitespace-pre-wrap">{row.install_content}</dd>
+            </div>
+          ) : null}
+          {row.special_notes ? (
+            <div className="flex gap-3">
+              <dt className="text-muted-foreground w-14 shrink-0">특이사항</dt>
+              <dd className="text-destructive/90 min-w-0 whitespace-pre-wrap font-medium">
+                {row.special_notes}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 

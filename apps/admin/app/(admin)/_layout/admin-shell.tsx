@@ -126,7 +126,9 @@ export async function AdminShell(props: AdminShellProps): Promise<ReactElement> 
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col">
+      {/* min-w-0: flex item 의 min-width:auto 가 내부 최소폭으로 컬럼을 뷰포트보다 넓혀
+          모바일 가로스크롤을 만든다 → 0 으로 눌러 뷰포트에 맞춤. */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 flex h-16 items-center justify-between border-b px-6 backdrop-blur">
           <div className="flex items-center gap-3">
             <span className="font-semibold md:hidden">🛠 마운트파트너스</span>
