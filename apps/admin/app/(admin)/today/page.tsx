@@ -207,7 +207,7 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
   return (
     <AdminShell activeNav="today" notificationCount={unassignedCount} title="오늘">
       <div className="mx-auto max-w-screen-2xl space-y-6 px-4 py-4 md:px-6 md:py-6">
-        <header className="flex items-baseline justify-between">
+        <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 className="text-2xl font-bold">오늘 운영 현황</h2>
           <div className="flex flex-col items-end gap-1 text-right">
             <p className="text-muted-foreground text-sm">기준 시각 {TIME_FORMATTER.format(new Date())}</p>
