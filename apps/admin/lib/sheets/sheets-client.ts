@@ -72,13 +72,22 @@ function indexToColumn(index: number): string {
   return s;
 }
 
+/**
+ * A1 표기용 시트명 인용 — 항상 작은따옴표로 감싸고 내부 '는 ''로 이스케이프.
+ * 탭 이름에 공백·특수문자(예: "2026 시공", "시공 리스트")가 있어도 range 파싱이 깨지지 않는다.
+ * 순수 한글/영문 이름도 인용해서 문제없다('시공리스트'!A1 유효).
+ */
+function quoteSheetName(name: string): string {
+  return `'${name.replace(/'/g, "''")}'`;
+}
+
 /** sync_id 열을 읽어 syncRowId 가 있는 1-base 행번호를 찾는다(없으면 null). */
 async function findRowNumber(
   token: string,
   link: SheetLink,
   syncRowId: string,
 ): Promise<number | null> {
-  const range = encodeURIComponent(`${link.sheetName}!${link.syncIdColumn}${link.headerRow + 1}:${link.syncIdColumn}`);
+  const range = encodeURIComponent(`${quoteSheetName(link.sheetName)}!${link.syncIdColumn}${link.headerRow + 1}:${link.syncIdColumn}`);
   const res = await fetch(`${SHEETS_BASE}/${link.spreadsheetId}/values/${range}`, {
     headers: { authorization: `Bearer ${token}` },
   });
@@ -123,7 +132,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
       if (rowNumber !== null) {
         // update — 매핑 셀만 개별 range 로(batchUpdate values)
         const data = Object.entries(cells).map(([col, value]) => ({
-          range: `${link.sheetName}!${col}${rowNumber}`,
+          range: `${quoteSheetName(link.sheetName)}!${col}${rowNumber}`,
           values: [[value]],
         }));
         const res = await fetch(
@@ -156,7 +165,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
       // 기존 데이터행의 A·D 를 읽어 삽입 오프셋 계산
       // NOTE: read-then-act 경합 — 읽기와 insertDimension 사이에 다른 편집이 끼면 오프셋이 어긋날 수 있다.
       //       은진님 단일 운영자 워크플로에선 동시편집이 없어 수용(별도 락 미도입).
-      const adRange = encodeURIComponent(`${link.sheetName}!A${link.headerRow + 1}:D`);
+      const adRange = encodeURIComponent(`${quoteSheetName(link.sheetName)}!A${link.headerRow + 1}:D`);
       const adRes = await fetch(`${SHEETS_BASE}/${link.spreadsheetId}/values/${adRange}`, {
         headers: { authorization: `Bearer ${token}` },
       });
@@ -170,7 +179,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
 
       if (offset === null) {
         // 날짜 파싱 실패 → 정렬 불가, 맨 아래 append 폴백
-        const appendRange = encodeURIComponent(`${link.sheetName}!A${link.headerRow + 1}`);
+        const appendRange = encodeURIComponent(`${quoteSheetName(link.sheetName)}!A${link.headerRow + 1}`);
         const res = await fetch(
           `${SHEETS_BASE}/${link.spreadsheetId}/values/${appendRange}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
           {
@@ -206,7 +215,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
         }),
       });
       if (!insRes.ok) throw new Error(`sheets_insert_failed:${insRes.status}`);
-      const writeRange = encodeURIComponent(`${link.sheetName}!A${insertIndex + 1}`);
+      const writeRange = encodeURIComponent(`${quoteSheetName(link.sheetName)}!A${insertIndex + 1}`);
       const wRes = await fetch(
         `${SHEETS_BASE}/${link.spreadsheetId}/values/${writeRange}?valueInputOption=RAW`,
         {
