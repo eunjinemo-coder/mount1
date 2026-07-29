@@ -89,9 +89,9 @@ function onEditSync(e) {
     if (row <= CONFIG.HEADER_ROWS) return; // 헤더 편집 무시
 
     var lastCol = sheet.getLastColumn();
-    var values = sheet.getRange(row, 1, 1, lastCol).getValues()[0].map(function (v) {
-      return v === null || v === undefined ? '' : String(v);
-    });
+    // getDisplayValues: 셀에 "보이는 문자열" 그대로(날짜 커스텀서식 "2026- 07- 23 / 목" 포함).
+    // getValues 는 날짜를 JS Date 객체로 줘서 String() 시 앱이 못 읽음 → 표시값을 보내 앱 파서와 정합.
+    var values = sheet.getRange(row, 1, 1, lastCol).getDisplayValues()[0];
 
     // _sync_id 확보(없으면 발급 후 시트에 기록)
     var syncCol = colToIndex_(CONFIG.SYNC_ID_COL);

@@ -81,6 +81,20 @@ function quoteSheetName(name: string): string {
   return `'${name.replace(/'/g, "''")}'`;
 }
 
+/**
+ * 시트 API 실패 → 상태코드 + 구글 응답 본문(사유)을 담은 Error.
+ * "sheets_read_failed:400 Unable to parse range: ..." 처럼 실제 원인이 sync_log/설정 화면에 노출된다.
+ */
+async function sheetErr(prefix: string, res: Response): Promise<Error> {
+  let body = '';
+  try {
+    body = (await res.text()).replace(/\s+/g, ' ').slice(0, 300);
+  } catch {
+    /* 본문 읽기 실패는 무시 — 상태코드만이라도 */
+  }
+  return new Error(`${prefix}:${res.status}${body ? ` ${body}` : ''}`);
+}
+
 /** sync_id 열을 읽어 syncRowId 가 있는 1-base 행번호를 찾는다(없으면 null). */
 async function findRowNumber(
   token: string,
@@ -91,7 +105,7 @@ async function findRowNumber(
   const res = await fetch(`${SHEETS_BASE}/${link.spreadsheetId}/values/${range}`, {
     headers: { authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`sheets_read_failed:${res.status}`);
+  if (!res.ok) throw await sheetErr('sheets_read_failed', res);
   const json = (await res.json()) as { values?: string[][] };
   const values = json.values ?? [];
   for (let i = 0; i < values.length; i += 1) {
@@ -112,7 +126,7 @@ async function getSheetId(token: string, spreadsheetId: string, sheetName: strin
     `${SHEETS_BASE}/${spreadsheetId}?fields=${encodeURIComponent('sheets.properties(sheetId,title)')}`,
     { headers: { authorization: `Bearer ${token}` } },
   );
-  if (!res.ok) throw new Error(`sheets_meta_failed:${res.status}`);
+  if (!res.ok) throw await sheetErr('sheets_meta_failed', res);
   const json = (await res.json()) as {
     sheets?: { properties?: { sheetId?: number; title?: string } }[];
   };
@@ -144,7 +158,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
             body: JSON.stringify({ valueInputOption: 'RAW', data }),
           },
         );
-        if (!res.ok) throw new Error(`sheets_update_failed:${res.status}`);
+        if (!res.ok) throw await sheetErr('sheets_update_failed', res);
         return { upserted: true };
       }
 
@@ -169,7 +183,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
       const adRes = await fetch(`${SHEETS_BASE}/${link.spreadsheetId}/values/${adRange}`, {
         headers: { authorization: `Bearer ${token}` },
       });
-      if (!adRes.ok) throw new Error(`sheets_read_failed:${adRes.status}`);
+      if (!adRes.ok) throw await sheetErr('sheets_read_failed', adRes);
       const adJson = (await adRes.json()) as { values?: string[][] };
       const existingAD = (adJson.values ?? []).map((r) => ({ date: r[0] ?? '', visit: r[3] ?? '' }));
       const offset = computeInsertOffset(existingAD, {
@@ -188,7 +202,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
             body: JSON.stringify({ values: [rowArray] }),
           },
         );
-        if (!res.ok) throw new Error(`sheets_append_failed:${res.status}`);
+        if (!res.ok) throw await sheetErr('sheets_append_failed', res);
         return { upserted: true };
       }
 
@@ -214,7 +228,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
           ],
         }),
       });
-      if (!insRes.ok) throw new Error(`sheets_insert_failed:${insRes.status}`);
+      if (!insRes.ok) throw await sheetErr('sheets_insert_failed', insRes);
       const writeRange = encodeURIComponent(`${quoteSheetName(link.sheetName)}!A${insertIndex + 1}`);
       const wRes = await fetch(
         `${SHEETS_BASE}/${link.spreadsheetId}/values/${writeRange}?valueInputOption=RAW`,
@@ -224,7 +238,7 @@ export function createGoogleSheetsApi(sa: GoogleServiceAccount): SheetsApi {
           body: JSON.stringify({ values: [rowArray] }),
         },
       );
-      if (!wRes.ok) throw new Error(`sheets_write_failed:${wRes.status}`);
+      if (!wRes.ok) throw await sheetErr('sheets_write_failed', wRes);
       return { upserted: true };
     },
   };
