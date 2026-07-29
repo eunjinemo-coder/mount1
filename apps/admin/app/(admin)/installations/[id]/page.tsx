@@ -1,5 +1,5 @@
 import { getServerClient } from '@mount/db';
-import { ForbiddenError, getSession, isValidUuid, RedirectError, requireRole } from '@mount/lib';
+import { ForbiddenError, getSession, isValidUuid, log, RedirectError, requireRole } from '@mount/lib';
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@mount/ui';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
@@ -7,10 +7,13 @@ import type { ReactElement } from 'react';
 import { AdminShell } from '../../_layout/admin-shell';
 import type { InstallationFormInput } from '../actions';
 import { InstallationForm } from '../installation-form';
+import { InstallationPhotos, type InstallationPhotoView } from './installation-photos';
 
 export const metadata = { title: '시공 상세' };
 
 const WRITE_ROLES = ['super_admin', 'ops_admin'];
+const PHOTO_BUCKET = 'photos-hot';
+const SIGNED_URL_TTL = 60 * 60; // 1시간
 
 const STATUS_LABEL: Record<string, string> = {
   scheduled: '예정',
@@ -66,6 +69,60 @@ function toInitial(row: JobRow): Partial<InstallationFormInput> {
   };
 }
 
+interface PhotoRow {
+  id: string;
+  storage_path: string;
+  caption: string | null;
+}
+
+/**
+ * 시공 사진 로드 + 서명 URL 생성. photos-hot 는 비공개 버킷이라 표시용 URL 을 서버에서 발급한다.
+ * installation_photos(0026) 미적용 환경에서도 페이지가 죽지 않게 실패 시 빈 배열로 격하한다.
+ */
+async function loadInstallationPhotos(
+  client: Awaited<ReturnType<typeof getServerClient>>,
+  jobId: string,
+): Promise<InstallationPhotoView[]> {
+  try {
+    const { data } = await (
+      client as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (
+              c: string,
+              v: string,
+            ) => {
+              order: (c: string, o: { ascending: boolean }) => PromiseLike<{ data: PhotoRow[] | null }>;
+            };
+          };
+        };
+      }
+    )
+      .from('installation_photos')
+      .select('id, storage_path, caption')
+      .eq('installation_job_id', jobId)
+      .order('created_at', { ascending: true });
+
+    const rows = data ?? [];
+    if (rows.length === 0) return [];
+
+    const paths = rows.map((r) => r.storage_path);
+    const { data: signed } = await client.storage.from(PHOTO_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL);
+    const urlByPath = new Map<string, string>();
+    for (const s of signed ?? []) {
+      if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
+    }
+    return rows.map((r) => ({ id: r.id, caption: r.caption, url: urlByPath.get(r.storage_path) ?? null }));
+  } catch (e) {
+    // 0026 미적용(테이블 없음)이면 정상 격하. 그 외(RLS/스토리지/네트워크)는 진단 위해 로깅.
+    log.warn('시공 사진 로드 실패 — 사진 섹션 비활성', {
+      jobId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return [];
+  }
+}
+
 export default async function InstallationDetailPage(props: {
   params: Promise<{ id: string }>;
 }): Promise<ReactElement> {
@@ -100,6 +157,7 @@ export default async function InstallationDetailPage(props: {
 
   const session = await getSession();
   const canWrite = !!session && WRITE_ROLES.includes(session.adminRole ?? '');
+  const photos = await loadInstallationPhotos(client, data.id);
 
   return (
     <AdminShell activeNav="installations" title="시공 상세">
@@ -119,6 +177,8 @@ export default async function InstallationDetailPage(props: {
         ) : (
           <ReadonlyView row={data} />
         )}
+
+        <InstallationPhotos jobId={data.id} photos={photos} canWrite={canWrite} />
       </div>
     </AdminShell>
   );
