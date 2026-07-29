@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { getServerClient } from '@mount/db';
 import type { AdminRole, UserType } from './sign-in';
 
@@ -35,8 +36,11 @@ function parseOptionalString(value: unknown): string | null {
  * 2. JWT 비어있으면 admin_users / technicians 직접 lookup (Hook OFF / 미설정 안전망)
  *
  * RLS 정책 admin_users_select_self / technicians_select_self 가 본인 row 만 허용.
+ *
+ * React cache(): 한 요청 안에서 page(requireRole)·AdminShell 등이 각자 getSession 을 불러도
+ * Supabase auth 네트워크 왕복은 1회만 — 페이지 전환 지연의 주범이던 중복 인증 호출 제거.
  */
-export async function getSession(): Promise<AppSession | null> {
+export const getSession = cache(async (): Promise<AppSession | null> => {
   const client = await getServerClient();
   const { data } = await client.auth.getUser();
   const user = data.user;
@@ -86,4 +90,4 @@ export async function getSession(): Promise<AppSession | null> {
     technicianId,
     adminUserId,
   };
-}
+});
