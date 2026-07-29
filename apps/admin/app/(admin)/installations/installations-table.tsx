@@ -91,6 +91,16 @@ export function InstallationsTable({ jobs }: { jobs: InstallationListRow[] }): R
     setSelected(allSelected ? new Set() : new Set(jobs.map((j) => j.id)));
   }
 
+  /** 모바일 카드용 단순 토글(드래그/Shift 없음). */
+  function toggleOne(id: string): void {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   function onDelete(): void {
     const ids = [...selected];
     if (ids.length === 0) return;
@@ -132,7 +142,61 @@ export function InstallationsTable({ jobs }: { jobs: InstallationListRow[] }): R
       {jobs.length === 0 ? (
         <p className="text-muted-foreground text-sm">조회된 시공이 없습니다.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+          {/* 모바일: 카드 리스트 — 체크박스로 선택, 카드 탭=상세 */}
+          <div className="space-y-2 md:hidden">
+            <label className="text-muted-foreground flex items-center gap-2 px-1 text-xs">
+              <input
+                aria-label="전체 선택"
+                checked={allSelected}
+                className="size-4"
+                onChange={toggleAll}
+                type="checkbox"
+              />
+              전체 선택
+            </label>
+            {jobs.map((job) => {
+              const isSelected = selected.has(job.id);
+              return (
+                <div
+                  className={`flex items-center gap-3 rounded-md border p-3 transition-colors ${
+                    isSelected ? 'border-primary/50 bg-primary/5' : ''
+                  }`}
+                  key={job.id}
+                >
+                  <input
+                    aria-label={`${job.customer_name ?? '시공'} 선택`}
+                    checked={isSelected}
+                    className="size-5 shrink-0"
+                    onChange={() => toggleOne(job.id)}
+                    type="checkbox"
+                  />
+                  <Link className="min-w-0 flex-1" href={`/installations/${job.id}`}>
+                    <p className="flex items-center gap-2">
+                      <span className="font-medium tabular-nums">
+                        {job.scheduled_install_date ?? '미정'}
+                      </span>
+                      <span className="text-muted-foreground text-xs">{job.visit_time ?? ''}</span>
+                      <Badge variant={STATUS_VARIANT[job.status ?? ''] ?? 'outline'}>
+                        {STATUS_LABEL[job.status ?? ''] ?? job.status ?? '-'}
+                      </Badge>
+                    </p>
+                    <p className="truncate text-sm">{job.customer_name ?? '-'}</p>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {job.address ?? '-'}
+                      {job.technician_name ? ` · ${job.technician_name}` : ' · 미배정'}
+                    </p>
+                  </Link>
+                  <span aria-hidden className="text-muted-foreground text-sm">
+                    →
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 데스크톱: 표(드래그·Shift 범위선택 지원) */}
+          <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm select-none">
             <thead>
               <tr className="border-b text-xs uppercase tracking-wider">
@@ -207,7 +271,8 @@ export function InstallationsTable({ jobs }: { jobs: InstallationListRow[] }): R
               })}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

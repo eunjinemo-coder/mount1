@@ -206,7 +206,7 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
 
   return (
     <AdminShell activeNav="today" notificationCount={unassignedCount} title="오늘">
-      <div className="mx-auto max-w-screen-2xl space-y-6 px-6 py-6">
+      <div className="mx-auto max-w-screen-2xl space-y-6 px-4 py-4 md:px-6 md:py-6">
         <header className="flex items-baseline justify-between">
           <h2 className="text-2xl font-bold">오늘 운영 현황</h2>
           <div className="flex flex-col items-end gap-1 text-right">
@@ -217,7 +217,8 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
 
         <TodayInstallations jobs={todayInstallations} />
 
-        <section className="space-y-6 border-t pt-6">
+        {/* 쿠팡 파일럿(dormant) — 모바일(기사 동선)에선 숨김: 죽은 KPI 6장이 스크롤만 차지 */}
+        <section className="hidden space-y-6 border-t pt-6 md:block">
           <p className="text-muted-foreground/70 text-[11px] font-semibold tracking-wider uppercase">
             쿠팡 파일럿 (dormant)
           </p>
@@ -293,7 +294,42 @@ function TodayInstallations({ jobs }: { jobs: TodayInstallationRow[] }): ReactEl
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <>
+          {/* 모바일: 카드 리스트(방문시간 크게 · 탭=상세). 표는 폰에서 가독 불가. */}
+          <div className="divide-y rounded-md border md:hidden">
+            {jobs.map((job) => (
+              <Link
+                className="active:bg-muted/40 flex items-center gap-3 p-3 transition-colors"
+                href={`/installations/${job.id}`}
+                key={job.id}
+              >
+                <div className="w-14 shrink-0 text-center">
+                  <p className="text-base font-bold tabular-nums">{job.visit_time ?? '-'}</p>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-2 font-medium">
+                    <span className="truncate">{job.customer_name ?? '-'}</span>
+                    <Badge variant={INSTALLATION_STATUS_VARIANT[job.status ?? ''] ?? 'outline'}>
+                      {INSTALLATION_STATUS_LABEL[job.status ?? ''] ?? job.status ?? '-'}
+                    </Badge>
+                  </p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {[job.address, job.address_detail].filter(Boolean).join(' ') || '주소 미입력'}
+                  </p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {job.technician_name ?? '미배정'}
+                    {job.install_type ? ` · ${job.install_type}` : ''}
+                  </p>
+                </div>
+                <span aria-hidden className="text-muted-foreground text-sm">
+                  →
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          {/* 데스크톱: 표 */}
+          <Card className="hidden md:block">
           <CardContent className="pt-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -346,7 +382,8 @@ function TodayInstallations({ jobs }: { jobs: TodayInstallationRow[] }): ReactEl
               </table>
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </>
       )}
     </section>
   );
