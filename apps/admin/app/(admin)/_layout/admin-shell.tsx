@@ -82,6 +82,9 @@ const STORE_NAV = [
 
 const SETTINGS_NAV = { id: 'settings', label: '설정', href: '/settings', icon: Cog } as const;
 
+// 모바일 하단 탭바 — 기사/현장 동선 핵심 4개(코어 + 설정). 쿠팡·스토어는 데스크톱에서.
+const MOBILE_NAV = [...CORE_NAV, SETTINGS_NAV] as const;
+
 export async function AdminShell(props: AdminShellProps): Promise<ReactElement> {
   // 세션 자동 fetch — props 우선, 없으면 session 에서 보충
   const session = props.adminName && props.adminRole ? null : await getSession();
@@ -147,7 +150,34 @@ export async function AdminShell(props: AdminShellProps): Promise<ReactElement> 
           </div>
         </header>
 
-        <main className="flex-1">{props.children}</main>
+        {/* 모바일: 하단 탭바에 가리지 않게 여백 확보 */}
+        <main className="flex-1 pb-20 md:pb-0">{props.children}</main>
+
+        {/* 모바일 하단 탭바 — 사이드바는 md+ 전용이라 폰에선 이게 유일한 전역 이동 수단 */}
+        <nav
+          aria-label="주요 메뉴"
+          className="bg-card/95 supports-[backdrop-filter]:bg-card/80 fixed inset-x-0 bottom-0 z-50 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        >
+          <div className="grid grid-cols-4">
+            {MOBILE_NAV.map((item) => {
+              const Icon = item.icon;
+              const isActive = props.activeNav === item.id;
+              return (
+                <Link
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
+                    isActive ? 'text-primary' : 'text-muted-foreground active:text-foreground'
+                  }`}
+                  href={item.href}
+                  key={item.id}
+                >
+                  <Icon aria-hidden className="size-5" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </div>
   );

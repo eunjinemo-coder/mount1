@@ -161,7 +161,7 @@ export default async function InstallationDetailPage(props: {
 
   return (
     <AdminShell activeNav="installations" title="시공 상세">
-      <div className="mx-auto max-w-screen-md space-y-6 px-6 py-6">
+      <div className="mx-auto max-w-screen-md space-y-6 px-4 py-4 md:px-6 md:py-6">
         <header className="flex flex-wrap items-baseline justify-between gap-2">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold">{data.customer_name ?? '시공 상세'}</h2>
