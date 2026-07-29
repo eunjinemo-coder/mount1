@@ -5,7 +5,9 @@ import {
   DEFAULT_INSTALLATION_COLUMN_MAP,
   DEFAULT_INSTALLATION_SYNC_ID_COLUMN,
   hasMinimalForCreate,
+  isoToSheetDate,
   isValidIsoDate,
+  parseSheetDateToIso,
   toFields,
   type InstallationJobRow,
 } from './mapping';
@@ -29,11 +31,11 @@ const ROW: InstallationJobRow = {
 };
 
 describe('toFields — installation_jobs → 시트 매핑필드(읽기 투영)', () => {
-  it('13필드 매핑 + 날짜 정본(YYYY-MM-DD)', () => {
+  it('13필드 매핑 + 날짜 시트표기(YYYY. M. D · 선행0 없음)', () => {
     const f = toFields(ROW);
-    expect(f.scheduled_install_date).toBe('2026-07-10');
-    expect(f.received_date).toBe('2026-07-01');
-    expect(f.move_date).toBe('2026-07-08');
+    expect(f.scheduled_install_date).toBe('2026. 7. 10');
+    expect(f.received_date).toBe('2026. 7. 1');
+    expect(f.move_date).toBe('2026. 7. 8');
     expect(f.visit_time).toBe('오전');
     expect(f.technician_name).toBe('김기사');
     expect(f.customer_contact).toBe('010-1234-5678'); // 원문 보존(전화정규화 안 함)
@@ -55,9 +57,37 @@ describe('toFields — installation_jobs → 시트 매핑필드(읽기 투영)'
     expect(f.move_date).toBeUndefined();
   });
 
-  it('date 가 timestamptz 형태로 와도 앞 10자로 정규화(왕복 정합)', () => {
+  it('date 가 timestamptz 형태로 와도 앞 10자→시트표기로 정규화(왕복 정합)', () => {
     const f = toFields({ ...ROW, scheduled_install_date: '2026-07-10T00:00:00.000Z' });
-    expect(f.scheduled_install_date).toBe('2026-07-10');
+    expect(f.scheduled_install_date).toBe('2026. 7. 10');
+  });
+});
+
+describe('시트 날짜 형식 변환 (은진님 시트 = "YYYY. M. D")', () => {
+  it('parseSheetDateToIso — 은진님 형식/ISO/구분자 변형을 ISO 로', () => {
+    expect(parseSheetDateToIso('2025. 3. 1')).toBe('2025-03-01'); // 점 뒤 공백
+    expect(parseSheetDateToIso('2025. 3. 1.')).toBe('2025-03-01'); // 후행점
+    expect(parseSheetDateToIso('2026.7.30')).toBe('2026-07-30');
+    expect(parseSheetDateToIso('2026-07-30')).toBe('2026-07-30'); // 이미 ISO
+    expect(parseSheetDateToIso('2026/7/30')).toBe('2026-07-30');
+    expect(parseSheetDateToIso('7-10')).toBeNull(); // 연도 없음
+    expect(parseSheetDateToIso('미정')).toBeNull();
+  });
+
+  it('isoToSheetDate — ISO → 은진님 표기(선행0 제거)', () => {
+    expect(isoToSheetDate('2026-07-30')).toBe('2026. 7. 30');
+    expect(isoToSheetDate('2025-03-01')).toBe('2025. 3. 1');
+  });
+
+  it('왕복 정합: ISO→시트→ISO', () => {
+    const iso = '2026-07-05';
+    expect(parseSheetDateToIso(isoToSheetDate(iso))).toBe(iso);
+  });
+
+  it('buildInstallationWrite — 시트표기 날짜를 DB용 ISO 로 역변환', () => {
+    expect(buildInstallationWrite({ scheduled_install_date: '2025. 3. 1' }).scheduled_install_date).toBe(
+      '2025-03-01',
+    );
   });
 });
 

@@ -140,15 +140,49 @@ export function isValidIsoDate(value: string): boolean {
   return !Number.isNaN(dt.getTime()) && dt.toISOString().slice(0, 10) === value;
 }
 
+// 시트 날짜 표기 허용: "2026-07-30" · "2026.7.30" · "2025. 3. 1" · "2025. 3. 1." (구분자 주변 공백·후행점 허용).
+const SHEET_DATE_RE = /^(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\s*\.?$/;
+
+/**
+ * 시트 날짜 원문 → ISO(YYYY-MM-DD) 또는 null. 이미 ISO 면 그대로.
+ * 은진님 시트 형식 "2025. 3. 1"(점 뒤 공백·선행0 없음)도 파싱한다. 4자리 연도 필수.
+ * (동기화 정렬·시트→앱 DB 쓰기·최소생성 판정이 공통으로 이 함수를 쓴다 — 형식 일관성의 단일 소스.)
+ */
+export function parseSheetDateToIso(raw: string): string | null {
+  const t = raw.trim();
+  if (t.length === 0) return null;
+  if (isValidIsoDate(t)) return t;
+  const m = SHEET_DATE_RE.exec(t);
+  if (!m) return null;
+  const iso = `${m[1]}-${m[2]!.padStart(2, '0')}-${m[3]!.padStart(2, '0')}`;
+  return isValidIsoDate(iso) ? iso : null;
+}
+
+/**
+ * ISO(YYYY-MM-DD) → 은진님 시트 표기 "YYYY. M. D"(선행0 없음, 예 2026-07-30 → "2026. 7. 30").
+ * 앱→시트 쓰기와 content_hash 모두 이 표기를 쓰므로 시트/에코 정합이 유지된다.
+ * ISO 가 아니면 원문 그대로 반환(방어).
+ */
+export function isoToSheetDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  if (!m) return iso;
+  return `${m[1]}. ${Number(m[2])}. ${Number(m[3])}`;
+}
+
 /** installation_jobs 행 → 시트 매핑필드(읽기 투영). status 는 포함하지 않음(시트 미동기화). */
 export function toFields(row: InstallationJobRow): MappedRow {
   const fields: Record<string, string> = {};
   const put = (key: InstallationFieldKey, v: string | null | undefined): void => {
     if (v !== null && v !== undefined && String(v).length > 0) fields[key] = String(v);
   };
-  put('scheduled_install_date', normalizeDbDate(row.scheduled_install_date));
-  put('received_date', normalizeDbDate(row.received_date));
-  put('move_date', normalizeDbDate(row.move_date));
+  // 날짜는 은진님 시트 표기(YYYY. M. D)로 투영 — 쓰기·해시가 시트와 같은 형식이라 정렬/에코 정합.
+  const toSheetDate = (v: string | null): string | null => {
+    const iso = normalizeDbDate(v);
+    return iso ? isoToSheetDate(iso) : null;
+  };
+  put('scheduled_install_date', toSheetDate(row.scheduled_install_date));
+  put('received_date', toSheetDate(row.received_date));
+  put('move_date', toSheetDate(row.move_date));
   put('visit_time', row.visit_time);
   put('technician_name', row.technician_name);
   put('customer_contact', row.customer_phone);
@@ -176,7 +210,7 @@ function normalizeDbDate(value: string | null): string | null {
 export function hasMinimalForCreate(fields: MappedRow): boolean {
   const hasDate =
     typeof fields.scheduled_install_date === 'string' &&
-    isValidIsoDate(fields.scheduled_install_date);
+    parseSheetDateToIso(fields.scheduled_install_date) !== null;
   const hasName =
     typeof fields.customer_name === 'string' && fields.customer_name.trim().length > 0;
   return hasDate || hasName;
@@ -192,8 +226,9 @@ export function buildInstallationWrite(fields: MappedRow): Record<string, string
     const value = fields[key];
     if (value === undefined) continue;
     if (DATE_FIELDS.has(key)) {
-      // 날짜는 유효한 YYYY-MM-DD 만(빈 문자열/오형식은 skip → date 컬럼 오염/에러 차단)
-      if (value.length > 0 && isValidIsoDate(value)) out[FIELD_TO_COLUMN[key]] = value;
+      // 시트 표기(YYYY. M. D 등)를 ISO 로 역변환해 DB(date)에 기록. 파싱 실패 시 skip(오염 차단).
+      const iso = value.length > 0 ? parseSheetDateToIso(value) : null;
+      if (iso) out[FIELD_TO_COLUMN[key]] = iso;
       continue;
     }
     out[FIELD_TO_COLUMN[key]] = value;

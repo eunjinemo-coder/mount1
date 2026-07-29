@@ -105,7 +105,7 @@ describe('createInstallationAdapter.read', () => {
     expect(rec?.updatedAt).toBe('2026-07-09T00:00:00.000Z');
     expect(rec?.fields.customer_name).toBe('홍길동');
     expect(rec?.fields.customer_contact).toBe('010-1234-5678');
-    expect(rec?.fields.scheduled_install_date).toBe('2026-07-10');
+    expect(rec?.fields.scheduled_install_date).toBe('2026. 7. 10');
   });
 
   it('없는 행 → null', async () => {
@@ -201,11 +201,17 @@ function cellsToValues(cells: Record<string, string>): string[] {
 }
 
 describe('왕복(A~M) 정합 — buildSheetRow → parseSheetRow 동일', () => {
-  it('13필드 라운드트립 후 필드 동일(자유서식 연락처 원문 보존 포함)', () => {
+  it('13필드 라운드트립 — 엔진은 날짜를 ISO 로 표준화(자유서식 연락처 원문 보존)', () => {
     const fields = toFields(DB_ROW);
     const cells = buildSheetRow(fields, DEFAULT_INSTALLATION_COLUMN_MAP);
     const parsed = parseSheetRow(cellsToValues(cells), DEFAULT_INSTALLATION_COLUMN_MAP).fields;
-    expect(parsed).toEqual(fields);
+    // toFields 는 시트 표기(YYYY. M. D)로 내보내고, 엔진 parseSheetRow 는 날짜를 ISO 정본으로
+    // 표준화한다(해시/에코의 canonical = ISO). 날짜 필드만 ISO 기대, 나머지는 원문 그대로.
+    expect(parsed).toEqual({
+      ...fields,
+      scheduled_install_date: '2026-07-10',
+      received_date: '2026-07-01',
+    });
   });
 
   it('outbox 해시 == 웹훅 해시(동일 필드셋·정본화)', () => {

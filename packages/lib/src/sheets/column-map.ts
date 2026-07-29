@@ -57,7 +57,8 @@ export interface ParseResult {
 }
 
 // YYYY-MM-DD / YYYY.MM.DD / YYYY/MM/DD 허용 → ISO(YYYY-MM-DD) 로 표준화.
-const DATE_RE = /^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/;
+// 구분자 주변 공백·후행점도 허용("2025. 3. 1", "2025. 3. 1.") — 한국식 시트 표기 대응.
+const DATE_RE = /^(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\s*\.?$/;
 // 국내 전화(숫자/하이픈/공백) — 정규화 후 9~11자리 숫자.
 const PHONE_ALLOWED_RE = /^[0-9\-\s()]+$/;
 
