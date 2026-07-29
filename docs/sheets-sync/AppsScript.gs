@@ -71,7 +71,9 @@ function uuid_() {
 
 /** HMAC-SHA256 hex 서명 (앱의 verifySheetsSignature 와 동일 알고리즘). */
 function sign_(secret, body) {
-  var raw = Utilities.computeHmacSha256Signature(body, secret);
+  // ⚠ UTF_8 명시 필수 — (문자열,문자열) 오버로드는 한글 등 비ASCII 에서 UrlFetchApp 전송 바이트와
+  //   다른 바이트로 서명해 서버 검증(UTF-8)과 불일치(401 invalid_signature)가 난다.
+  var raw = Utilities.computeHmacSha256Signature(body, secret, Utilities.Charset.UTF_8);
   var hex = '';
   for (var i = 0; i < raw.length; i++) {
     var b = (raw[i] < 0 ? raw[i] + 256 : raw[i]).toString(16);
@@ -120,6 +122,9 @@ function onEditSync(e) {
       headers: { 'x-sheets-signature': signature },
       muteHttpExceptions: true,
     });
+
+    // 진단: 웹훅 응답을 실행 로그에 남긴다(muteHttpExceptions 라 실패도 "완료"로 보이므로).
+    console.log('webhook ' + res.getResponseCode() + ' ' + String(res.getContentText()).slice(0, 300));
 
     var json = {};
     try { json = JSON.parse(res.getContentText()); } catch (_) {}
