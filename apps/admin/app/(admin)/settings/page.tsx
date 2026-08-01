@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactElement } from 'react';
 import { AdminShell } from '../_layout/admin-shell';
+import { ChangePasswordForm } from './change-password';
 
 export const metadata = { title: '설정' };
 
@@ -106,12 +107,13 @@ export default async function SettingsPage(): Promise<ReactElement> {
               비밀번호 변경
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-muted-foreground text-sm leading-7">
-            <p>
-              현재 비밀번호 변경 화면은 준비 중입니다. 비밀번호를 잊었거나 재설정이 필요하면
-              <strong className="text-foreground"> 대표(super_admin)</strong> 에게 요청해 주세요.
+          <CardContent className="space-y-4">
+            <ChangePasswordForm />
+            <p className="text-muted-foreground text-xs leading-6">
+              비밀번호를 <strong className="text-foreground">잊어버린</strong> 경우에는 로그인을 할 수
+              없으므로 여기서 바꿀 수 없습니다. 이때는{' '}
+              <strong className="text-foreground">대표(super_admin)</strong> 에게 재발급을 요청해 주세요.
             </p>
-            <p className="mt-2">대표는 Supabase Dashboard 에서 직접 재발급할 수 있어요.</p>
           </CardContent>
         </Card>
 
