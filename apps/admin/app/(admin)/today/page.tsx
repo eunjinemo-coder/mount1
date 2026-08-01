@@ -167,12 +167,13 @@ function TodayInstallations({ jobs }: { jobs: TodayInstallationRow[] }): ReactEl
                   <p className="text-base font-bold tabular-nums">{job.visit_time ?? '-'}</p>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 font-medium">
+                  {/* Badge(<div>)를 <p> 안에 넣으면 hydration 불일치(#418) → <div> 사용 */}
+                  <div className="flex items-center gap-2 font-medium">
                     <span className="truncate">{job.customer_name ?? '-'}</span>
                     <Badge variant={INSTALLATION_STATUS_VARIANT[job.status ?? ''] ?? 'outline'}>
                       {INSTALLATION_STATUS_LABEL[job.status ?? ''] ?? job.status ?? '-'}
                     </Badge>
-                  </p>
+                  </div>
                   <p className="text-muted-foreground truncate text-xs">
                     {[job.address, job.address_detail].filter(Boolean).join(' ') || '주소 미입력'}
                   </p>
