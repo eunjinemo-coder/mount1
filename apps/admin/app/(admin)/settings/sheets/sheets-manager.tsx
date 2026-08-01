@@ -89,7 +89,8 @@ export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactEleme
                 className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
               >
                 <div className="min-w-0">
-                  <p className="flex items-center gap-2 font-medium">
+                  {/* Badge(<div>)를 <p> 안에 넣으면 hydration 불일치(#418) → <div> 사용 */}
+                  <div className="flex items-center gap-2 font-medium">
                     {link.sheetName}
                     {link.active ? (
                       <Badge>활성</Badge>
@@ -99,7 +100,7 @@ export function SheetsManager({ links }: { links: SheetLinkView[] }): ReactEleme
                     {link.failed > 0 ? (
                       <Badge variant="destructive">시트 동기화 {link.failed}건 실패</Badge>
                     ) : null}
-                  </p>
+                  </div>
                   <p className="text-muted-foreground mt-0.5 truncate font-mono text-xs">
                     {link.spreadsheetId.slice(0, 18)}… · 매핑 {link.columnCount}열 · 대기 {link.pending}
                   </p>

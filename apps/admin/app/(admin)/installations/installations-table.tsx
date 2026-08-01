@@ -172,7 +172,9 @@ export function InstallationsTable({ jobs }: { jobs: InstallationListRow[] }): R
                     type="checkbox"
                   />
                   <Link className="min-w-0 flex-1" href={`/installations/${job.id}`}>
-                    <p className="flex items-center gap-2">
+                    {/* Badge 는 <div> 라 <p> 안에 넣으면 브라우저가 <p>를 강제로 닫아
+                        서버/클라 DOM 이 어긋난다(hydration #418) → <div> 사용 */}
+                    <div className="flex items-center gap-2">
                       <span className="font-medium tabular-nums">
                         {job.scheduled_install_date ?? '미정'}
                       </span>
@@ -180,7 +182,7 @@ export function InstallationsTable({ jobs }: { jobs: InstallationListRow[] }): R
                       <Badge variant={STATUS_VARIANT[job.status ?? ''] ?? 'outline'}>
                         {STATUS_LABEL[job.status ?? ''] ?? job.status ?? '-'}
                       </Badge>
-                    </p>
+                    </div>
                     <p className="truncate text-sm">{job.customer_name ?? '-'}</p>
                     <p className="text-muted-foreground truncate text-xs">
                       {job.address ?? '-'}

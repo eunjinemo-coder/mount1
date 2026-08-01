@@ -158,12 +158,13 @@ export default async function StoreProductDetailPage(props: {
                           {v.name}{' '}
                           <span className="text-muted-foreground font-mono text-xs">{v.sku}</span>
                         </p>
-                        <p className="text-muted-foreground text-xs">
+                        {/* Badge(<div>)를 <p> 안에 넣으면 hydration 불일치(#418) → <div> 사용 */}
+                        <div className="text-muted-foreground text-xs">
                           기본 단가 {formatWon(v.base_price)} ·{' '}
                           <Badge variant={v.active ? 'default' : 'secondary'}>
                             {v.active ? '판매중' : '비활성'}
                           </Badge>
-                        </p>
+                        </div>
                       </div>
                       <div>
                         <p className="text-muted-foreground mb-1 text-xs">재고</p>
