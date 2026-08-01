@@ -1,5 +1,5 @@
 import { getServerClient } from '@mount/db';
-import { ForbiddenError, RedirectError, requireRole } from '@mount/lib';
+import { ForbiddenError, log, RedirectError, requireRole } from '@mount/lib';
 import { Badge, Card, CardContent } from '@mount/ui';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -58,9 +58,9 @@ interface TodayInstallationRow {
 async function loadTodayInstallations(
   client: Awaited<ReturnType<typeof getServerClient>>,
   dateStr: string,
-): Promise<TodayInstallationRow[]> {
+): Promise<{ rows: TodayInstallationRow[]; failed: boolean }> {
   try {
-    const { data } = await (
+    const { data, error } = await (
       client as unknown as {
         from: (t: string) => {
           select: (c: string) => {
@@ -68,7 +68,13 @@ async function loadTodayInstallations(
               c: string,
               v: string,
             ) => {
-              in: (c: string, v: string[]) => PromiseLike<{ data: TodayInstallationRow[] | null }>;
+              in: (
+                c: string,
+                v: string[],
+              ) => PromiseLike<{
+                data: TodayInstallationRow[] | null;
+                error: { message: string } | null;
+              }>;
             };
           };
         };
@@ -81,12 +87,18 @@ async function loadTodayInstallations(
       .eq('scheduled_install_date', dateStr)
       .in('status', ['scheduled', 'in_progress']);
 
+    if (error) {
+      log.warn('오늘 시공 조회 실패', { date: dateStr, error: error.message });
+      return { rows: [], failed: true };
+    }
     const rows = data ?? [];
     const sortKey = (r: TodayInstallationRow): number =>
       parseVisitTimeMinutes(r.visit_time ?? '') ?? Number.MAX_SAFE_INTEGER;
-    return [...rows].sort((a, b) => sortKey(a) - sortKey(b));
-  } catch {
-    return [];
+    return { rows: [...rows].sort((a, b) => sortKey(a) - sortKey(b)), failed: false };
+  } catch (e) {
+    // 0025 미적용(테이블 없음) 등도 여기로 — 사용자에겐 "일시적 오류"로 안내(데이터 없음과 구분)
+    log.warn('오늘 시공 조회 예외', { date: dateStr, error: e instanceof Error ? e.message : String(e) });
+    return { rows: [], failed: true };
   }
 }
 
@@ -117,7 +129,7 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
           </div>
         </header>
 
-        <TodayInstallations jobs={todayInstallations} />
+        <TodayInstallations jobs={todayInstallations.rows} loadFailed={todayInstallations.failed} />
 
         {/* 쿠팡 dormant 는 Suspense 스트리밍 — 6개 쿼리가 코어(본사 시공) 첫 페인트를 안 막음 */}
         <Suspense fallback={null}>
@@ -129,7 +141,13 @@ export default async function AdminTodayPage(): Promise<ReactElement> {
 }
 
 /** 오늘 본사 시공 리스트 — today 대시보드의 히어로 섹션(자사앱 우선). */
-function TodayInstallations({ jobs }: { jobs: TodayInstallationRow[] }): ReactElement {
+function TodayInstallations({
+  jobs,
+  loadFailed = false,
+}: {
+  jobs: TodayInstallationRow[];
+  loadFailed?: boolean;
+}): ReactElement {
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between">
@@ -144,7 +162,18 @@ function TodayInstallations({ jobs }: { jobs: TodayInstallationRow[] }): ReactEl
           전체 시공 →
         </Link>
       </div>
-      {jobs.length === 0 ? (
+      {loadFailed ? (
+        <Card className="border-destructive/40">
+          <CardContent className="space-y-1 py-6">
+            <p className="text-destructive text-sm font-medium">
+              오늘 일정을 불러오지 못했습니다 (일시적 오류)
+            </p>
+            <p className="text-muted-foreground text-sm">
+              데이터가 삭제된 것이 아닙니다. 잠시 후 새로고침해 주세요.
+            </p>
+          </CardContent>
+        </Card>
+      ) : jobs.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground py-6 text-sm">
             오늘 예정된 본사 시공이 없습니다.{' '}

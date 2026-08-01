@@ -31,7 +31,7 @@ function kstToday(): string {
   return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
-interface JobQuery extends PromiseLike<{ data: JobRow[] | null }> {
+interface JobQuery extends PromiseLike<{ data: JobRow[] | null; error: { message: string } | null }> {
   select: (c: string) => JobQuery;
   eq: (c: string, v: string) => JobQuery;
   gte: (c: string, v: string) => JobQuery;
@@ -66,7 +66,8 @@ export default async function InstallationsPage(props: {
   if (activeFilter.id === 'today') query = query.eq('scheduled_install_date', today);
   else if (activeFilter.id === 'upcoming') query = query.gte('scheduled_install_date', today);
 
-  const { data } = await query;
+  // 조회 실패를 "데이터 없음"으로 오인하지 않게 구분해 전달(장애 중 데이터 유실 오해 방지).
+  const { data, error: loadError } = await query;
   const jobs = data ?? [];
 
   return (
@@ -104,7 +105,7 @@ export default async function InstallationsPage(props: {
 
         <Card>
           <CardContent className="pt-6">
-            <InstallationsTable jobs={jobs} />
+            <InstallationsTable jobs={jobs} loadFailed={!!loadError} />
           </CardContent>
         </Card>
       </div>

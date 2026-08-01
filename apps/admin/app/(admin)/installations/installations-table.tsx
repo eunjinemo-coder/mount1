@@ -39,7 +39,14 @@ export interface InstallationListRow {
   status: string | null;
 }
 
-export function InstallationsTable({ jobs }: { jobs: InstallationListRow[] }): ReactElement {
+export function InstallationsTable({
+  jobs,
+  loadFailed = false,
+}: {
+  jobs: InstallationListRow[];
+  /** 조회 자체가 실패했는가(= 데이터 없음과 구분). 장애를 "삭제됨"으로 오인하지 않게. */
+  loadFailed?: boolean;
+}): ReactElement {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -139,7 +146,20 @@ export function InstallationsTable({ jobs }: { jobs: InstallationListRow[] }): R
       ) : null}
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
-      {jobs.length === 0 ? (
+      {loadFailed ? (
+        <div className="border-destructive/40 bg-destructive/5 space-y-2 rounded-md border p-4">
+          <p className="text-destructive text-sm font-medium">
+            시공 목록을 불러오지 못했습니다 (일시적 오류)
+          </p>
+          <p className="text-muted-foreground text-sm">
+            데이터가 삭제된 것이 아닙니다. 잠시 후 새로고침해 주세요. 계속되면 네트워크 상태를
+            확인해 주세요.
+          </p>
+          <Button size="sm" variant="outline" onClick={() => router.refresh()}>
+            다시 시도
+          </Button>
+        </div>
+      ) : jobs.length === 0 ? (
         <p className="text-muted-foreground text-sm">조회된 시공이 없습니다.</p>
       ) : (
         <>
